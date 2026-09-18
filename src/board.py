@@ -6,6 +6,12 @@ from typing import Any
 
 
 ARROWS = frozenset({"U", "D", "L", "R"})
+DIRECTION_DELTAS = {
+    "U": (-1, 0),
+    "D": (1, 0),
+    "L": (0, -1),
+    "R": (0, 1),
+}
 
 
 @dataclass(frozen=True)
@@ -83,3 +89,21 @@ class Board:
 
     def is_arrow(self, row: int, col: int) -> bool:
         return self.get_cell(row, col) in ARROWS
+
+    def _find_blocker(self, row: int, col: int) -> tuple[int, int] | None:
+        row_delta, col_delta = DIRECTION_DELTAS[self.arrow_grid[row][col]]
+        row += row_delta
+        col += col_delta
+
+        while self.in_bounds(row, col):
+            cell = self.arrow_grid[row][col]
+            if cell is None:
+                return None
+            if cell in ARROWS:
+                return row, col
+            row += row_delta
+            col += col_delta
+        return None
+
+    def can_fly(self, row: int, col: int) -> bool:
+        return self.is_arrow(row, col) and self._find_blocker(row, col) is None

@@ -13,7 +13,7 @@
 ## File map
 
 - Create `requirements.txt`: pin compatible pytest and Pygame major versions.
-- Create `.gitignore`: exclude Python caches and local virtual environments.
+- Modify `.gitignore`: preserve the worktree exclusion and add Python caches and local virtual environments.
 - Create `main.py`: load the sample level and print a minimal status line.
 - Create `src/__init__.py`: mark the source package.
 - Create `src/board.py`: `MoveResult`, input validation, queries, path inspection, clicks, counts, and reset.
@@ -31,7 +31,7 @@
 
 **Files:**
 - Create: `requirements.txt`
-- Create: `.gitignore`
+- Modify: `.gitignore`
 - Create: `src/__init__.py`
 - Create: `src/game.py`
 - Create: `src/ui.py`
@@ -50,9 +50,10 @@ pygame>=2.6,<3
 pytest>=8,<9
 ```
 
-Create `.gitignore` with:
+Extend `.gitignore` so it contains:
 
 ```text
+.worktrees/
 __pycache__/
 *.py[cod]
 .pytest_cache/

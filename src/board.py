@@ -61,7 +61,7 @@ class Board:
         for row_index, row in enumerate(arrow_grid):
             for col_index, cell in enumerate(row):
                 if cell is not None and (
-                    not isinstance(cell, str) or (cell != "." and cell not in ARROWS)
+                    type(cell) is not str or (cell != "." and cell not in ARROWS)
                 ):
                     raise ValueError("arrow_grid contains an invalid cell value")
                 color = color_grid[row_index][col_index]

@@ -1,8 +1,13 @@
 from copy import deepcopy
+from dataclasses import FrozenInstanceError
 
 import pytest
 
-from src.board import Board
+from src.board import Board, MoveResult
+
+
+class UnhashableStr(str):
+    __hash__ = None
 
 
 def make_board(arrow_grid):
@@ -41,6 +46,13 @@ def test_cell_queries_are_safe():
     assert board.is_arrow(0, 2) is False
 
 
+def test_move_result_is_frozen():
+    result = MoveResult(True, 0, 0, "R", "clear")
+
+    with pytest.raises(FrozenInstanceError):
+        result.success = False
+
+
 @pytest.mark.parametrize(
     ("arrows", "colors"),
     [
@@ -50,6 +62,7 @@ def test_cell_queries_are_safe():
         ([["R"]], [["a"], ["b"]]),
         ([["X"]], [["a"]]),
         ([[[]]], [["red"]]),
+        ([[UnhashableStr("R")]], [["red"]]),
         ([[None]], [["a"]]),
         ([["R"]], [[None]]),
     ],

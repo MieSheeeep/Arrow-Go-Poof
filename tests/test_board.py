@@ -129,3 +129,69 @@ def test_non_arrow_positions_cannot_fly(row, col):
     board = make_board([[None, ".", "R"]])
 
     assert board.can_fly(row, col) is False
+
+
+def test_successful_click_clears_cell_immediately():
+    board = make_board([["R", "."]])
+
+    result = board.click(0, 0)
+
+    assert result.success is True
+    assert result.row == 0
+    assert result.col == 0
+    assert result.direction == "R"
+    assert result.reason == "clear"
+    assert result.blocker is None
+    assert board.get_cell(0, 0) == "."
+
+
+def test_blocked_click_returns_first_blocker_without_mutation():
+    board = make_board([["R", ".", "U", "L"]])
+    before = deepcopy(board.arrow_grid)
+
+    result = board.click(0, 0)
+
+    assert result.success is False
+    assert result.row == 0
+    assert result.col == 0
+    assert result.direction == "R"
+    assert result.reason == "blocked"
+    assert result.blocker == (0, 2)
+    assert board.arrow_grid == before
+
+
+@pytest.mark.parametrize(
+    ("row", "col", "reason"),
+    [
+        (-1, 0, "out_of_bounds"),
+        (0, 3, "out_of_bounds"),
+        (0, 0, "invalid_cell"),
+        (0, 1, "already_cleared"),
+    ],
+)
+def test_invalid_clicks_return_specific_reasons_without_mutation(row, col, reason):
+    board = make_board([[None, ".", "R"]])
+    before = deepcopy(board.arrow_grid)
+
+    result = board.click(row, col)
+
+    assert result.success is False
+    assert result.row == row
+    assert result.col == col
+    assert result.direction is None
+    assert result.reason == reason
+    assert result.blocker is None
+    assert board.arrow_grid == before
+
+
+def test_repeated_click_after_success_is_already_cleared():
+    board = make_board([["R"]])
+
+    first = board.click(0, 0)
+    second = board.click(0, 0)
+
+    assert first.success is True
+    assert second.success is False
+    assert second.reason == "already_cleared"
+    assert second.direction is None
+    assert second.blocker is None

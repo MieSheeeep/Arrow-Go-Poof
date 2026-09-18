@@ -107,3 +107,20 @@ class Board:
 
     def can_fly(self, row: int, col: int) -> bool:
         return self.is_arrow(row, col) and self._find_blocker(row, col) is None
+
+    def click(self, row: int, col: int) -> MoveResult:
+        if not self.in_bounds(row, col):
+            return MoveResult(False, row, col, None, "out_of_bounds")
+
+        cell = self.arrow_grid[row][col]
+        if cell is None:
+            return MoveResult(False, row, col, None, "invalid_cell")
+        if cell == ".":
+            return MoveResult(False, row, col, None, "already_cleared")
+
+        blocker = self._find_blocker(row, col)
+        if blocker is not None:
+            return MoveResult(False, row, col, cell, "blocked", blocker)
+
+        self.arrow_grid[row][col] = "."
+        return MoveResult(True, row, col, cell, "clear")

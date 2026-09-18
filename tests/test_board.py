@@ -195,3 +195,39 @@ def test_repeated_click_after_success_is_already_cleared():
     assert second.reason == "already_cleared"
     assert second.direction is None
     assert second.blocker is None
+
+
+def test_remaining_arrows_counts_only_arrow_cells():
+    board = make_board([["R", ".", None], ["U", "D", "L"]])
+
+    assert board.remaining_arrows() == 4
+    assert board.is_cleared() is False
+
+
+def test_last_arrow_clears_board():
+    board = make_board([["R"]])
+
+    board.click(0, 0)
+
+    assert board.remaining_arrows() == 0
+    assert board.is_cleared() is True
+
+
+def test_reset_restores_complete_initial_state():
+    arrows = [["L", ".", "R"]]
+    colors = [["red", "green", "blue"]]
+    original_arrows = deepcopy(arrows)
+    original_colors = deepcopy(colors)
+    board = Board(arrows, colors)
+
+    assert board.click(0, 0).success is True
+    assert board.click(0, 2).success is True
+    board.color_grid[0][0] = "changed"
+
+    board.reset()
+
+    assert board.arrow_grid == arrows
+    assert board.color_grid == colors
+    assert board.remaining_arrows() == 2
+    assert arrows == original_arrows
+    assert colors == original_colors

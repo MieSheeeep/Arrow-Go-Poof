@@ -124,3 +124,13 @@ class Board:
 
         self.arrow_grid[row][col] = "."
         return MoveResult(True, row, col, cell, "clear")
+
+    def remaining_arrows(self) -> int:
+        return sum(cell in ARROWS for row in self.arrow_grid for cell in row)
+
+    def is_cleared(self) -> bool:
+        return self.remaining_arrows() == 0
+
+    def reset(self) -> None:
+        self.arrow_grid = deepcopy(self._initial_arrow_grid)
+        self.color_grid = deepcopy(self._initial_color_grid)

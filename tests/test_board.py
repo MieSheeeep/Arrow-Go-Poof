@@ -108,6 +108,22 @@ def test_cleared_cell_is_traversable():
     assert board.can_fly(0, 0) is True
 
 
+@pytest.mark.parametrize(
+    ("arrow_grid", "row", "col"),
+    [
+        ([["D", ".", "."], [".", ".", "."], ["U", ".", "."]], 2, 0),
+        ([[".", "D", "."], [".", ".", "."], [".", "L", "."]], 0, 1),
+        ([[".", ".", "."], ["R", ".", "L"], [".", ".", "."]], 1, 2),
+        ([[".", ".", "."], ["R", ".", "U"], [".", ".", "."]], 1, 0),
+    ],
+    ids=["up", "down", "left", "right"],
+)
+def test_distant_arrow_blocks_flight_in_each_direction(arrow_grid, row, col):
+    board = make_board(arrow_grid)
+
+    assert board.can_fly(row, col) is False
+
+
 @pytest.mark.parametrize("row, col", [(-1, 0), (0, 3), (0, 0), (0, 1)])
 def test_non_arrow_positions_cannot_fly(row, col):
     board = make_board([[None, ".", "R"]])

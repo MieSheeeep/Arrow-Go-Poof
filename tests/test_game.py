@@ -136,7 +136,7 @@ def test_start_enters_first_level_and_next_level_replaces_board():
     game.start()
     first_board = game.board
     assert game.state is GameState.PLAYING
-    assert game.level_name == "DIAMOND SWORD"
+    assert game.level_name == "ENCHANTED APPLE"
 
     game.state = GameState.CLEARED
     assert game.next_level() is True

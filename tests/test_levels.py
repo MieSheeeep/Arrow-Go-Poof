@@ -1,8 +1,8 @@
 from src.levels import (
-    DIAMOND_SWORD_ARROW_GRID,
-    DIAMOND_SWORD_COLOR_GRID,
-    DIAMOND_SWORD_LAYOUT_SEED,
-    DIAMOND_SWORD_SOLUTION,
+    ENCHANTED_APPLE_ARROW_GRID,
+    ENCHANTED_APPLE_COLOR_GRID,
+    ENCHANTED_APPLE_LAYOUT_SEED,
+    ENCHANTED_APPLE_SOLUTION,
     HELLO_KITTY_ARROW_GRID,
     HELLO_KITTY_COLOR_GRID,
     HELLO_KITTY_LAYOUT_SEED,
@@ -24,7 +24,7 @@ from src.levels import (
     TREE_LAYOUT_SEED,
     TREE_SOLUTION,
     create_sample_board,
-    create_diamond_sword_board,
+    create_enchanted_apple_board,
     create_flower_board,
     create_hello_kitty_board,
     create_sun_board,
@@ -127,21 +127,21 @@ def test_course_has_three_named_level_factories():
     assert all(factory().remaining_arrows() > 0 for factory in LEVEL_FACTORIES)
 
 
-def test_runtime_campaign_uses_sword_ball_and_hello_kitty_in_order():
-    assert LEVEL_NAMES == ("DIAMOND SWORD", "BEAD BALL", "MOON KITTY")
+def test_runtime_campaign_uses_apple_ball_and_hello_kitty_in_order():
+    assert LEVEL_NAMES == ("ENCHANTED APPLE", "BEAD BALL", "MOON KITTY")
     assert LEVEL_FACTORIES == (
-        create_diamond_sword_board,
+        create_enchanted_apple_board,
         create_tree_board,
         create_hello_kitty_board,
     )
-    assert len(DIAMOND_SWORD_COLOR_GRID) == len(DIAMOND_SWORD_ARROW_GRID) == 16
+    assert len(ENCHANTED_APPLE_COLOR_GRID) == len(ENCHANTED_APPLE_ARROW_GRID) == 16
     assert len(HELLO_KITTY_COLOR_GRID) == len(HELLO_KITTY_ARROW_GRID) == 17
     assert len(HELLO_KITTY_COLOR_GRID[0]) == len(HELLO_KITTY_ARROW_GRID[0]) == 18
-    assert _play_frozen_solution(create_diamond_sword_board, DIAMOND_SWORD_SOLUTION)
+    assert _play_frozen_solution(create_enchanted_apple_board, ENCHANTED_APPLE_SOLUTION)
     assert _play_frozen_solution(create_hello_kitty_board, HELLO_KITTY_SOLUTION)
-    sword = generate_solvable_layout(DIAMOND_SWORD_COLOR_GRID, DIAMOND_SWORD_LAYOUT_SEED)
+    apple = generate_solvable_layout(ENCHANTED_APPLE_COLOR_GRID, ENCHANTED_APPLE_LAYOUT_SEED)
     kitty = generate_solvable_layout(HELLO_KITTY_COLOR_GRID, HELLO_KITTY_LAYOUT_SEED)
-    assert sword.arrow_grid == DIAMOND_SWORD_ARROW_GRID
+    assert apple.arrow_grid == ENCHANTED_APPLE_ARROW_GRID
     assert kitty.arrow_grid == HELLO_KITTY_ARROW_GRID
 
 

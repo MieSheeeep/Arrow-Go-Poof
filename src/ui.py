@@ -14,6 +14,8 @@ BACKGROUND = (126, 190, 232)
 HUD_COLOR = (39, 77, 119)
 ARROW_TILE = (235, 237, 235)
 ARROW_COLOR = (218, 240, 246)
+ARROW_CARD_ALPHA = 155
+HOVERED_ARROW_CARD_ALPHA = 115
 ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
@@ -51,6 +53,14 @@ COLOR_MAP = {
     "kitty_gray": (219, 219, 219),
     "kitty_bow": (196, 18, 23),
     "kitty_pink": (226, 176, 176),
+    "apple_gold": (252, 164, 57),
+    "apple_peach": (254, 201, 132),
+    "apple_shadow": (182, 110, 73),
+    "apple_light": (253, 231, 114),
+    "apple_red": (154, 22, 56),
+    "apple_purple": (176, 0, 106),
+    "apple_white": (254, 254, 254),
+    "apple_outline": (91, 32, 32),
 }
 
 
@@ -281,7 +291,7 @@ class UI:
             colour_wash = pygame.Surface(rect.size, pygame.SRCALPHA)
             pygame.draw.rect(
                 colour_wash,
-                (*fill, 78 if is_hovered else 110),
+                (*fill, HOVERED_ARROW_CARD_ALPHA if is_hovered else ARROW_CARD_ALPHA),
                 colour_wash.get_rect(),
                 border_radius=radius,
             )

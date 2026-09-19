@@ -5,9 +5,11 @@ from src.board import Board
 from src.game import Game
 from src.levels import create_tree_board
 from src.ui import (
+    ARROW_CARD_ALPHA,
     ARROW_COLOR,
     BACKGROUND,
     COLOR_MAP,
+    HOVERED_ARROW_CARD_ALPHA,
     MENU_BACKGROUND_PATH,
     MENU_PANEL_COLOR,
     WORK_MAT_RECT,
@@ -46,6 +48,12 @@ def test_grid_layout_rejects_invalid_cell_sizes(cell_size):
 def test_known_material_colors_are_distinct():
     assert COLOR_MAP["flower"] != COLOR_MAP["leaf"]
     assert COLOR_MAP["leaf_light"] != COLOR_MAP["leaf"]
+
+
+def test_arrow_cards_are_more_solid_but_hover_remains_more_transparent():
+    assert ARROW_CARD_ALPHA == 155
+    assert HOVERED_ARROW_CARD_ALPHA == 115
+    assert ARROW_CARD_ALPHA > HOVERED_ARROW_CARD_ALPHA
 
 
 def test_ui_exposes_start_and_result_action_buttons():

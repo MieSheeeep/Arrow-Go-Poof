@@ -162,6 +162,104 @@ def create_diamond_sword_board() -> Board:
     )
 
 
+# The supplied Enchanted Golden Apple project is already a complete 16×16
+# bead image.  Its palette is reduced to seven readable in-game materials.
+ENCHANTED_APPLE_LAYOUT_SEED = 2026092005
+_ENCHANTED_APPLE_PIXEL_COLORS = {
+    "A": "apple_gold",
+    "B": "apple_peach",
+    "C": "apple_gold",
+    "D": "apple_shadow",
+    "E": "apple_light",
+    "F": "apple_red",
+    "G": "apple_light",
+    "H": "apple_purple",
+    "I": "apple_white",
+    "J": "apple_red",
+    "K": "apple_purple",
+    "L": "apple_purple",
+    "M": "apple_outline",
+    "N": "apple_red",
+    "O": "apple_peach",
+    "P": "apple_peach",
+    "Q": "apple_gold",
+    "R": "apple_purple",
+    "S": "apple_red",
+    "T": "apple_peach",
+    "U": "apple_light",
+    "V": "apple_gold",
+    "W": "apple_gold",
+    "X": "apple_outline",
+    "Y": "apple_gold",
+    "Z": "apple_red",
+}
+_ENCHANTED_APPLE_PIXEL_ROWS = (
+    "................",
+    "........K.......",
+    ".......NL.......",
+    ".......F........",
+    "....DDFHHH......",
+    "..DAIAMSBTHF....",
+    ".DAEGIIIGGOFF...",
+    ".DAEEEEEUBGAF...",
+    ".DCVEBEBBBGPF...",
+    ".JCCBECABWGPH...",
+    ".XQCCCABAAGAR...",
+    "..JQCEAAABOL....",
+    "..JDCACBBYNR....",
+    "...MDCDDAZL.....",
+    "....MJFFKK......",
+    "................",
+)
+ENCHANTED_APPLE_COLOR_GRID = tuple(
+    tuple(None if pixel == "." else _ENCHANTED_APPLE_PIXEL_COLORS[pixel] for pixel in row)
+    for row in _ENCHANTED_APPLE_PIXEL_ROWS
+)
+ENCHANTED_APPLE_ARROW_GRID = (
+    (None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, None, "L", None, None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, "L", "R", None, None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, "U", None, None, None, None, None, None, None, None),
+    (None, None, None, None, "U", "U", "R", "U", "U", "R", None, None, None, None, None, None),
+    (None, None, "L", "U", "L", "U", "L", "U", "U", "U", "U", "U", None, None, None, None),
+    (None, "L", "L", "U", "L", "L", "U", "L", "U", "R", "U", "R", "U", None, None, None),
+    (None, "U", "L", "U", "U", "U", "R", "D", "R", "U", "U", "R", "R", None, None, None),
+    (None, "L", "D", "L", "U", "U", "U", "D", "R", "R", "U", "R", "R", None, None, None),
+    (None, "L", "L", "R", "U", "U", "D", "D", "R", "R", "D", "D", "D", None, None, None),
+    (None, "L", "L", "L", "L", "D", "R", "R", "D", "R", "R", "D", "R", None, None, None),
+    (None, None, "L", "L", "L", "D", "L", "D", "R", "R", "D", "R", None, None, None, None),
+    (None, None, "D", "L", "L", "D", "D", "L", "R", "R", "D", "D", None, None, None, None),
+    (None, None, None, "L", "D", "D", "D", "D", "R", "D", "R", None, None, None, None, None),
+    (None, None, None, None, "L", "D", "D", "D", "R", "D", None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None),
+)
+ENCHANTED_APPLE_SOLUTION = (
+    (6, 1), (14, 7), (4, 5), (10, 12), (13, 10), (2, 7), (5, 3), (14, 9),
+    (14, 6), (14, 4), (5, 5), (7, 12), (5, 2), (6, 12), (7, 11), (13, 7),
+    (13, 3), (7, 1), (13, 6), (14, 8), (6, 2), (2, 8), (4, 4), (14, 5),
+    (4, 9), (5, 10), (5, 4), (13, 9), (11, 2), (13, 8), (13, 5), (3, 7),
+    (12, 2), (8, 12), (5, 11), (9, 1), (9, 12), (6, 11), (6, 3), (1, 8),
+    (8, 11), (7, 2), (4, 8), (12, 10), (6, 10), (11, 10), (11, 11), (10, 1),
+    (7, 10), (5, 6), (12, 11), (11, 9), (6, 4), (7, 4), (10, 11), (10, 10),
+    (8, 4), (8, 1), (6, 9), (13, 4), (12, 9), (6, 5), (4, 7), (9, 10),
+    (9, 4), (9, 2), (12, 6), (11, 8), (4, 6), (9, 11), (12, 3), (8, 10),
+    (12, 8), (6, 6), (10, 2), (8, 2), (10, 3), (12, 5), (8, 9), (5, 9),
+    (9, 9), (5, 8), (10, 8), (11, 3), (12, 4), (7, 9), (10, 9), (11, 5),
+    (12, 7), (10, 5), (7, 8), (5, 7), (10, 7), (6, 8), (11, 7), (8, 3),
+    (6, 7), (9, 7), (9, 8), (7, 5), (11, 4), (8, 5), (8, 7), (10, 6),
+    (7, 7), (7, 6), (8, 6), (11, 6), (10, 4), (9, 6), (8, 8), (9, 5),
+    (9, 3), (7, 3),
+)
+
+
+def create_enchanted_apple_board() -> Board:
+    """Return a fresh Board for the supplied Enchanted Golden Apple pattern."""
+    return Board(
+        [list(row) for row in ENCHANTED_APPLE_ARROW_GRID],
+        [list(row) for row in ENCHANTED_APPLE_COLOR_GRID],
+    )
+
+
 # The supplied Moon Hello Kitty bead project is downsampled at design time to
 # an 18×17 grid.  Normal play uses these frozen rows, never runtime sampling.
 HELLO_KITTY_LAYOUT_SEED = 2026092003
@@ -365,9 +463,9 @@ def create_sun_board() -> Board:
     )
 
 
-LEVEL_NAMES = ("DIAMOND SWORD", "BEAD BALL", "MOON KITTY")
+LEVEL_NAMES = ("ENCHANTED APPLE", "BEAD BALL", "MOON KITTY")
 LEVEL_FACTORIES = (
-    create_diamond_sword_board,
+    create_enchanted_apple_board,
     create_tree_board,
     create_hello_kitty_board,
 )

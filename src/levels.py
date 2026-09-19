@@ -54,3 +54,52 @@ def create_tree_board() -> Board:
     arrow_grid = [list(row) for row in TREE_ARROW_GRID]
     color_grid = [list(row) for row in TREE_COLOR_GRID]
     return Board(arrow_grid, color_grid)
+
+
+FLOWER_ARROW_GRID = (
+    (None, None, "U", None, None),
+    (None, "L", "U", "R", None),
+    ("L", "L", ".", "R", "R"),
+    (None, "L", "D", "R", None),
+    (None, None, "D", None, None),
+)
+FLOWER_COLOR_GRID = (
+    (None, None, "flower", None, None),
+    (None, "flower", "flower", "flower", None),
+    ("leaf", "flower", "leaf_light", "flower", "leaf"),
+    (None, "leaf", "trunk", "leaf", None),
+    (None, None, "grass", None, None),
+)
+
+SUN_ARROW_GRID = (
+    ("U", "U", "U", "U"),
+    ("L", "U", "U", "R"),
+    ("L", "D", "D", "R"),
+    ("L", "D", "D", "R"),
+)
+SUN_COLOR_GRID = (
+    ("flower", "flower", "flower", "flower"),
+    ("flower", "leaf_light", "leaf_light", "flower"),
+    ("grass", "leaf", "leaf", "grass"),
+    ("grass", "trunk", "trunk", "grass"),
+)
+
+
+def create_flower_board() -> Board:
+    """Return a fresh Board for the flower-shaped demo level."""
+    return Board(
+        [list(row) for row in FLOWER_ARROW_GRID],
+        [list(row) for row in FLOWER_COLOR_GRID],
+    )
+
+
+def create_sun_board() -> Board:
+    """Return a fresh Board for the sun-shaped demo level."""
+    return Board(
+        [list(row) for row in SUN_ARROW_GRID],
+        [list(row) for row in SUN_COLOR_GRID],
+    )
+
+
+LEVEL_NAMES = ("TREE", "FLOWER", "SUN")
+LEVEL_FACTORIES = (create_tree_board, create_flower_board, create_sun_board)

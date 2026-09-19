@@ -1,9 +1,15 @@
 from src.levels import (
+    FLOWER_ARROW_GRID,
+    LEVEL_FACTORIES,
+    LEVEL_NAMES,
     SAMPLE_ARROW_GRID,
     SAMPLE_COLOR_GRID,
+    SUN_ARROW_GRID,
     TREE_ARROW_GRID,
     TREE_COLOR_GRID,
     create_sample_board,
+    create_flower_board,
+    create_sun_board,
     create_tree_board,
 )
 
@@ -89,3 +95,52 @@ def test_tree_factory_is_available_for_runtime_entry_point():
     assert board.rows == 12
     assert board.cols == 13
     assert board.remaining_arrows() > 0
+
+
+def _winning_sequence(factory):
+    board = factory()
+    path = []
+    while True:
+        available = [
+            (row_index, col_index)
+            for row_index, row in enumerate(board.arrow_grid)
+            for col_index, cell in enumerate(row)
+            if cell in {"U", "D", "L", "R"}
+            and board.can_fly(row_index, col_index)
+        ]
+        if not available:
+            return path if board.is_cleared() else None
+        row_index, col_index = available[0]
+        assert board.click(row_index, col_index).success
+        path.append((row_index, col_index))
+
+
+def test_course_has_three_named_level_factories():
+    assert len(LEVEL_FACTORIES) == 3
+    assert len(LEVEL_NAMES) == 3
+    assert all(factory().remaining_arrows() > 0 for factory in LEVEL_FACTORIES)
+
+
+def test_extra_levels_use_all_four_arrow_directions():
+    for grid in (FLOWER_ARROW_GRID, SUN_ARROW_GRID):
+        arrows = {cell for row in grid for cell in row}
+        assert {"U", "D", "L", "R"} <= arrows
+
+
+def test_every_course_level_has_a_winning_sequence():
+    for factory in LEVEL_FACTORIES:
+        sequence = _winning_sequence(factory)
+        assert sequence is not None
+        assert len(sequence) == factory().remaining_arrows()
+
+
+def test_extra_level_factories_return_independent_boards():
+    first = create_flower_board()
+    second = create_flower_board()
+    first.arrow_grid[0][2] = "."
+    assert second.arrow_grid[0][2] == "U"
+
+    first = create_sun_board()
+    second = create_sun_board()
+    first.arrow_grid[0][0] = "."
+    assert second.arrow_grid[0][0] == "U"

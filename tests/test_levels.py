@@ -53,6 +53,9 @@ def test_tree_level_direction_layout_has_edges_and_internal_directions():
     assert TREE_ARROW_GRID[3][10] == "R"
     assert TREE_ARROW_GRID[5][0] == "L"
     assert TREE_ARROW_GRID[5][12] == "R"
+    assert TREE_ARROW_GRID[11][3] == "L"
+    assert TREE_ARROW_GRID[11][4] == "D"
+    assert TREE_ARROW_GRID[11][9] == "R"
     for row in TREE_ARROW_GRID[1:3]:
         assert all(cell == "U" for cell in row if cell is not None)
     for row in TREE_ARROW_GRID[3:8]:

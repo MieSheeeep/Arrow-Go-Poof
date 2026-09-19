@@ -19,7 +19,6 @@ ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
 MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
 MENU_PANEL_COLOR = (75, 48, 31)
-DESK_MAT_COLOR = (55, 77, 82)
 COLOR_MAP = {
     "leaf_light": (138, 205, 90),
     "leaf": (105, 181, 78),
@@ -33,6 +32,12 @@ COLOR_MAP = {
     "sun": (252, 190, 55),
     "ray": (255, 221, 104),
     "sky": (126, 190, 232),
+    "ball_outline": (40, 43, 45),
+    "ball_highlight": (231, 131, 52),
+    "ball_red": (192, 83, 48),
+    "ball_shine": (235, 251, 247),
+    "ball_white": (255, 255, 255),
+    "ball_gray": (188, 192, 188),
 }
 
 
@@ -79,9 +84,21 @@ class UI:
             # onto headless test surfaces before a display mode exists.
             pygame.image.load(MENU_BACKGROUND_PATH), WINDOW_SIZE
         )
+        self._refresh_layout()
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
+        self._refresh_layout()
         return self.layout.cell_at(position, self.game.board.rows, self.game.board.cols)
+
+    def _refresh_layout(self) -> None:
+        """Center the current level while leaving room for the HUD."""
+        cell_size = min(
+            48,
+            640 // self.game.board.rows,
+            680 // self.game.board.cols,
+        )
+        origin_x = (self.screen.get_width() - self.game.board.cols * cell_size) // 2
+        self.layout = GridLayout(origin=(origin_x, 130), cell_size=cell_size)
 
     def restart_rect(self) -> pygame.Rect:
         return self.result_action_rect()
@@ -149,15 +166,8 @@ class UI:
         self.screen.blit(label, label.get_rect(center=button.center))
 
     def _draw_menu_background(self) -> None:
-        """Draw the generated work desk and its central game mat."""
+        """Draw the generated work desk behind the one-button main menu."""
         self.screen.blit(self.menu_background, (0, 0))
-        shadow = pygame.Rect(244, 340, 712, 326)
-        mat = pygame.Rect(260, 352, 680, 300)
-        pygame.draw.rect(self.screen, (36, 29, 25), shadow, border_radius=22)
-        pygame.draw.rect(self.screen, DESK_MAT_COLOR, mat, border_radius=18)
-        pygame.draw.rect(self.screen, (117, 144, 143), mat, 2, border_radius=18)
-        pygame.draw.line(self.screen, (87, 111, 112), (282, 372), (918, 372), 1)
-        pygame.draw.line(self.screen, (87, 111, 112), (282, 632), (918, 632), 1)
 
     def _draw_background(self) -> None:
         width, height = self.screen.get_size()
@@ -181,6 +191,7 @@ class UI:
             pygame.draw.rect(self.screen, (245, 247, 238), (x + 24, y - 14, 58, 18))
 
     def _draw_board(self) -> None:
+        self._refresh_layout()
         hover_cell = self.cell_at(pygame.mouse.get_pos())
         active_cells = {
             (animation.row, animation.col) for animation in self.game.animations

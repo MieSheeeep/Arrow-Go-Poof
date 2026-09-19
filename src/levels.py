@@ -12,33 +12,70 @@ SAMPLE_COLOR_GRID = (
     ("grass", "trunk", "trunk", "grass", "flower"),
 )
 
-TREE_ARROW_GRID = (
-    (None, None, None, None, None, None, "U", None, None, None, None, None, None),
-    (None, None, None, None, "U", "U", "U", "U", "U", None, None, None, None),
-    (None, None, None, "U", "U", "U", "U", "U", "U", "U", "U", None, None),
-    (None, None, "L", "U", "U", "U", "U", "U", "U", "U", "R", None, None),
-    (None, "L", "U", "U", "U", "U", "U", "U", "U", "U", "U", "R", None),
-    ("L", "U", "U", "U", "U", "U", "U", "U", "U", "U", "U", "U", "R"),
-    (None, "L", "U", "U", "U", "U", "U", "U", "U", "U", "U", "R", None),
-    (None, None, "L", "U", "U", "U", "U", "U", "U", "U", "R", None, None),
-    (None, None, None, None, "D", "D", "D", "D", "D", None, None, None, None),
-    (None, None, None, None, "D", "D", "D", "D", "D", None, None, None, None),
-    (None, None, None, None, "D", "D", "D", "D", "D", None, None, None, None),
-    (None, None, None, "L", "D", "D", "D", "D", "D", "R", None, None, None),
+TREE_LAYOUT_SEED = 2026091921
+_TREE_PIXEL_COLORS = {
+    "K": "ball_outline",
+    "H": "ball_highlight",
+    "R": "ball_red",
+    "S": "ball_shine",
+    "W": "ball_white",
+    "G": "ball_gray",
+}
+_TREE_PIXEL_ROWS = (
+    "................",
+    "................",
+    "......KKKK......",
+    "....KKHRRRKK....",
+    "...KHHSHRRRRK...",
+    "...KHSHHHHRRK...",
+    "..KHHHHHRRRRRK..",
+    "..KHHHHKKRRRRK..",
+    "..KKHHKWGKRRKK..",
+    "..KWKKKGGKKKGK..",
+    "...KWWWKKGGGK...",
+    "...KWWWWGGGGK...",
+    "....KKWGGGKK....",
+    "......KKKK......",
+    "................",
+    "................",
 )
-TREE_COLOR_GRID = (
-    (None, None, None, None, None, None, "leaf_light", None, None, None, None, None, None),
-    (None, None, None, None, "leaf", "leaf", "leaf", "leaf", "leaf", None, None, None, None),
-    (None, None, None, "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", None, None),
-    (None, None, "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", None, None),
-    (None, "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", None),
-    ("leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf"),
-    (None, "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", None),
-    (None, None, "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", "leaf", None, None),
-    (None, None, None, None, "trunk", "trunk", "trunk", "trunk", "trunk", None, None, None, None),
-    (None, None, None, None, "trunk", "trunk", "trunk", "trunk", "trunk", None, None, None, None),
-    (None, None, None, None, "trunk", "trunk", "trunk", "trunk", "trunk", None, None, None, None),
-    (None, None, None, "grass", "grass", "grass", "grass", "grass", "grass", "grass", None, None, None),
+TREE_COLOR_GRID = tuple(
+    tuple(None if pixel == "." else _TREE_PIXEL_COLORS[pixel] for pixel in row)
+    for row in _TREE_PIXEL_ROWS
+)
+TREE_ARROW_GRID = (
+    (None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None),
+    (None, None, None, None, None, None, "U", "L", "R", "U", None, None, None, None, None, None),
+    (None, None, None, None, "L", "U", "L", "L", "U", "U", "U", "U", None, None, None, None),
+    (None, None, None, "U", "D", "U", "L", "R", "R", "U", "U", "U", "R", None, None, None),
+    (None, None, None, "U", "L", "U", "R", "R", "U", "U", "U", "R", "R", None, None, None),
+    (None, None, "L", "L", "D", "U", "D", "L", "U", "U", "U", "U", "R", "R", None, None),
+    (None, None, "L", "L", "D", "U", "D", "U", "U", "U", "R", "R", "R", "R", None, None),
+    (None, None, "L", "L", "L", "L", "D", "L", "L", "R", "D", "R", "R", "R", None, None),
+    (None, None, "D", "U", "L", "D", "L", "R", "D", "R", "D", "R", "D", "D", None, None),
+    (None, None, None, "D", "L", "L", "L", "D", "D", "U", "D", "L", "R", None, None, None),
+    (None, None, None, "D", "L", "L", "D", "L", "D", "R", "D", "R", "D", None, None, None),
+    (None, None, None, None, "L", "D", "D", "L", "D", "D", "D", "R", None, None, None, None),
+    (None, None, None, None, None, None, "D", "R", "R", "R", None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None),
+)
+TREE_SOLUTION = (
+    (3, 10), (8, 2), (13, 9), (9, 13), (12, 10), (6, 13), (12, 4), (3, 5),
+    (9, 2), (4, 10), (6, 2), (8, 13), (11, 3), (4, 5), (5, 12), (3, 4),
+    (11, 12), (4, 12), (2, 6), (8, 3), (7, 13), (11, 10), (8, 4), (2, 9),
+    (2, 8), (3, 11), (13, 6), (7, 2), (7, 3), (4, 3), (10, 10), (10, 12),
+    (5, 3), (10, 3), (13, 8), (6, 3), (12, 6), (13, 7), (3, 9), (10, 4),
+    (9, 12), (5, 5), (3, 6), (7, 12), (11, 4), (5, 10), (6, 12), (12, 8),
+    (11, 6), (11, 11), (11, 5), (9, 3), (12, 5), (10, 5), (11, 9), (3, 8),
+    (9, 4), (4, 9), (8, 12), (7, 4), (5, 9), (9, 5), (9, 11), (9, 6),
+    (7, 11), (9, 10), (2, 7), (4, 11), (12, 11), (12, 9), (6, 5), (8, 5),
+    (3, 7), (4, 8), (6, 4), (7, 5), (5, 8), (5, 11), (11, 7), (8, 10),
+    (9, 9), (5, 4), (6, 10), (4, 4), (8, 11), (6, 9), (10, 6), (8, 6),
+    (8, 9), (12, 7), (7, 6), (7, 9), (6, 8), (4, 7), (8, 7), (6, 6),
+    (11, 8), (7, 10), (4, 6), (10, 9), (8, 8), (5, 7), (10, 8), (7, 8),
+    (5, 6), (10, 7), (6, 7), (6, 11), (7, 7), (9, 8), (9, 7), (10, 11),
 )
 
 
@@ -50,7 +87,7 @@ def create_sample_board() -> Board:
 
 
 def create_tree_board() -> Board:
-    """Return a fresh Board for the tree-shaped demo level."""
+    """Return a fresh Board for the supplied bead-ball pixel pattern."""
     arrow_grid = [list(row) for row in TREE_ARROW_GRID]
     color_grid = [list(row) for row in TREE_COLOR_GRID]
     return Board(arrow_grid, color_grid)
@@ -166,5 +203,5 @@ def create_sun_board() -> Board:
     )
 
 
-LEVEL_NAMES = ("TREE", "FLOWER", "SUN")
+LEVEL_NAMES = ("BEAD BALL", "FLOWER", "SUN")
 LEVEL_FACTORIES = (create_tree_board, create_flower_board, create_sun_board)

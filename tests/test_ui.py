@@ -3,6 +3,7 @@ import pytest
 
 from src.board import Board
 from src.game import Game
+from src.levels import create_tree_board
 from src.ui import BACKGROUND, COLOR_MAP, MENU_BACKGROUND_PATH, MENU_PANEL_COLOR, GridLayout, WINDOW_SIZE
 from src.ui import UI
 
@@ -60,15 +61,16 @@ def test_start_screen_draws_a_distinct_title_panel_and_start_button():
     assert screen.get_at((80, 80))[:3] != BACKGROUND
 
 
-def test_start_screen_draws_a_central_desk_mat():
-    pygame.font.init()
-    screen = pygame.Surface(WINDOW_SIZE)
-    game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
-
-    UI(screen, game).draw()
-
-    assert screen.get_at((600, 400))[:3] == (55, 77, 82)
-
-
 def test_main_menu_background_is_packaged_with_the_project():
     assert MENU_BACKGROUND_PATH.is_file()
+
+
+def test_ui_scales_the_16_by_16_first_level_to_fit_the_play_area():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+
+    assert ui.layout.cell_size == 40
+    assert ui.layout.origin == (280, 130)
+    assert ui.cell_at((919, 769)) == (15, 15)
+    assert ui.cell_at((920, 770)) is None

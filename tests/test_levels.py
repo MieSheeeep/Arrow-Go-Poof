@@ -13,6 +13,8 @@ from src.levels import (
     SUN_SOLUTION,
     TREE_ARROW_GRID,
     TREE_COLOR_GRID,
+    TREE_LAYOUT_SEED,
+    TREE_SOLUTION,
     create_sample_board,
     create_flower_board,
     create_sun_board,
@@ -38,13 +40,13 @@ def test_sample_level_definitions_are_tuples_of_tuples():
     assert all(isinstance(row, tuple) for row in SAMPLE_COLOR_GRID)
 
 
-def test_tree_level_definitions_are_12_by_13_tuples():
+def test_first_level_definitions_are_16_by_16_tuples():
     assert isinstance(TREE_ARROW_GRID, tuple)
     assert isinstance(TREE_COLOR_GRID, tuple)
-    assert len(TREE_ARROW_GRID) == 12
-    assert len(TREE_COLOR_GRID) == 12
-    assert all(len(row) == 13 for row in TREE_ARROW_GRID)
-    assert all(len(row) == 13 for row in TREE_COLOR_GRID)
+    assert len(TREE_ARROW_GRID) == 16
+    assert len(TREE_COLOR_GRID) == 16
+    assert all(len(row) == 16 for row in TREE_ARROW_GRID)
+    assert all(len(row) == 16 for row in TREE_COLOR_GRID)
     assert all(isinstance(row, tuple) for row in TREE_ARROW_GRID)
     assert all(isinstance(row, tuple) for row in TREE_COLOR_GRID)
 
@@ -55,53 +57,33 @@ def test_tree_level_arrow_and_color_masks_match():
     assert arrow_mask == color_mask
 
 
-def test_tree_level_has_expected_top_and_trunk_cells():
-    assert TREE_ARROW_GRID[0][6] == "U"
-    assert TREE_COLOR_GRID[0][6] == "leaf_light"
-    assert TREE_COLOR_GRID[8][6] == "trunk"
+def test_first_level_uses_the_supplied_bead_ball_pixel_pattern():
+    assert TREE_COLOR_GRID[2][6] == "ball_outline"
+    assert TREE_COLOR_GRID[4][6] == "ball_shine"
+    assert TREE_COLOR_GRID[8][7] == "ball_white"
+    assert TREE_COLOR_GRID[9][7] == "ball_gray"
 
 
-def test_tree_level_direction_layout_has_edges_and_internal_directions():
-    assert TREE_ARROW_GRID[3][2] == "L"
-    assert TREE_ARROW_GRID[3][10] == "R"
-    assert TREE_ARROW_GRID[5][0] == "L"
-    assert TREE_ARROW_GRID[5][12] == "R"
-    assert TREE_ARROW_GRID[11][3] == "L"
-    assert TREE_ARROW_GRID[11][4] == "D"
-    assert TREE_ARROW_GRID[11][9] == "R"
-    for row in TREE_ARROW_GRID[1:3]:
-        assert all(cell == "U" for cell in row if cell is not None)
-    for row in TREE_ARROW_GRID[3:8]:
-        valid_cells = [cell for cell in row if cell is not None]
-        assert valid_cells[0] == "L"
-        assert valid_cells[-1] == "R"
-        assert all(cell == "U" for cell in valid_cells[1:-1])
-    assert TREE_ARROW_GRID[8][6] == "D"
-    assert all(
-        cell == "D"
-        for row in TREE_ARROW_GRID[8:11]
-        for cell in row
-        if cell is not None
-    )
+def test_first_level_uses_all_four_arrow_directions():
+    arrows = {cell for row in TREE_ARROW_GRID for cell in row if cell is not None}
+    assert arrows == {"U", "D", "L", "R"}
 
 
 def test_tree_board_factory_returns_independent_boards():
     first = create_tree_board()
     second = create_tree_board()
-    first.arrow_grid[0][6] = "."
-    first.color_grid[1][6] = "changed_leaf"
-    first.color_grid[8][6] = "changed_trunk"
-    assert second.arrow_grid[0][6] == "U"
-    assert second.color_grid[1][6] == "leaf"
-    assert second.color_grid[8][6] == "trunk"
+    first.arrow_grid[2][6] = "."
+    first.color_grid[2][6] = "changed_outline"
+    assert second.arrow_grid[2][6] == "U"
+    assert second.color_grid[2][6] == "ball_outline"
 
 
 def test_tree_factory_is_available_for_runtime_entry_point():
     board = create_tree_board()
 
-    assert board.rows == 12
-    assert board.cols == 13
-    assert board.remaining_arrows() > 0
+    assert board.rows == 16
+    assert board.cols == 16
+    assert board.remaining_arrows() == 112
 
 
 def _winning_sequence(factory):
@@ -142,9 +124,7 @@ def test_extra_levels_use_all_four_arrow_directions():
 
 
 def test_every_course_level_has_a_winning_sequence():
-    sequence = _winning_sequence(create_tree_board)
-    assert sequence is not None
-    assert len(sequence) == create_tree_board().remaining_arrows()
+    assert _play_frozen_solution(create_tree_board, TREE_SOLUTION)
     assert _play_frozen_solution(create_flower_board, FLOWER_SOLUTION)
     assert _play_frozen_solution(create_sun_board, SUN_SOLUTION)
 
@@ -178,8 +158,11 @@ def test_flower_and_sun_are_large_fixed_pixel_art_levels():
 
 
 def test_frozen_art_layouts_match_their_generation_seeds():
+    tree = generate_solvable_layout(TREE_COLOR_GRID, TREE_LAYOUT_SEED)
     flower = generate_solvable_layout(FLOWER_COLOR_GRID, FLOWER_LAYOUT_SEED)
     sun = generate_solvable_layout(SUN_COLOR_GRID, SUN_LAYOUT_SEED)
+    assert TREE_ARROW_GRID == tree.arrow_grid
+    assert TREE_SOLUTION == tree.solution
     assert FLOWER_ARROW_GRID == flower.arrow_grid
     assert FLOWER_SOLUTION == flower.solution
     assert SUN_ARROW_GRID == sun.arrow_grid

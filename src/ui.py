@@ -18,6 +18,7 @@ ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
 MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
+ARROW_SPRITES_PATH = Path(__file__).resolve().parent.parent / "assets" / "arrow-sprites.png"
 MENU_PANEL_COLOR = (75, 48, 31)
 # The dark desk mat in the supplied work-table illustration. Puzzle cells stay
 # inside it so the board feels like a bead-art project on the work surface.
@@ -87,7 +88,25 @@ class UI:
             # onto headless test surfaces before a display mode exists.
             pygame.image.load(MENU_BACKGROUND_PATH), WINDOW_SIZE
         )
+        self.arrow_sprites = self._load_arrow_sprites()
         self._refresh_layout()
+
+    @staticmethod
+    def _load_arrow_sprites() -> dict[str, pygame.Surface]:
+        """Split the supplied 2×2 pixel-art arrow sheet into four icons."""
+        sheet = pygame.image.load(ARROW_SPRITES_PATH)
+        half_width = sheet.get_width() // 2
+        half_height = sheet.get_height() // 2
+        source_rects = {
+            "U": pygame.Rect(0, 0, half_width, half_height),
+            "R": pygame.Rect(half_width, 0, half_width, half_height),
+            "D": pygame.Rect(0, half_height, half_width, half_height),
+            "L": pygame.Rect(half_width, half_height, half_width, half_height),
+        }
+        return {
+            direction: pygame.transform.scale(sheet.subsurface(rect).copy(), (40, 40))
+            for direction, rect in source_rects.items()
+        }
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
         self._refresh_layout()
@@ -262,9 +281,12 @@ class UI:
         self.screen.blit(shadow, rect.move(2, 3).topleft)
 
         tile = pygame.Surface(rect.size, pygame.SRCALPHA)
-        alpha = 156 if is_hovered else (218 if is_arrow else 196)
+        # The card is purposefully quiet: direction is communicated by the
+        # supplied pixel arrow, while its backing only preserves hit-area and
+        # hover readability.
+        alpha = 102 if is_hovered else (58 if is_arrow else 172)
         border = HOVER_COLOR if is_hovered else ((178, 70, 70) if is_error else (255, 255, 255))
-        border_alpha = 235 if is_hovered else (155 if is_arrow else 92)
+        border_alpha = 235 if is_hovered else (72 if is_arrow else 92)
         pygame.draw.rect(
             tile,
             (*fill, alpha),
@@ -280,7 +302,7 @@ class UI:
         )
         pygame.draw.line(
             tile,
-            (255, 255, 255, 98 if is_arrow else 62),
+            (255, 255, 255, 28 if is_arrow else 62),
             (radius, 2),
             (rect.width - radius, 2),
             width=1,
@@ -293,6 +315,14 @@ class UI:
         direction: str,
         color: tuple[int, int, int],
     ) -> None:
+        if color == ARROW_COLOR and direction in self.arrow_sprites:
+            icon_size = max(18, rect.width - 4)
+            icon = self.arrow_sprites[direction]
+            if icon.get_width() != icon_size:
+                icon = pygame.transform.scale(icon, (icon_size, icon_size))
+            self.screen.blit(icon, icon.get_rect(center=rect.center))
+            return
+
         center = rect.center
         arm = self.layout.cell_size // 3
         shaft = max(4, self.layout.cell_size // 7)

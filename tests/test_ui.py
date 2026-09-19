@@ -6,6 +6,7 @@ from src.game import Game
 from src.levels import create_tree_board
 from src.ui import (
     BACKGROUND,
+    ARROW_SPRITES_PATH,
     COLOR_MAP,
     MENU_BACKGROUND_PATH,
     MENU_PANEL_COLOR,
@@ -71,6 +72,16 @@ def test_start_screen_draws_a_distinct_title_panel_and_start_button():
 
 def test_main_menu_background_is_packaged_with_the_project():
     assert MENU_BACKGROUND_PATH.is_file()
+
+
+def test_pixel_arrow_sprite_sheet_is_packaged_and_split_by_direction():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+
+    assert ARROW_SPRITES_PATH.is_file()
+    assert set(ui.arrow_sprites) == {"U", "D", "L", "R"}
+    assert all(sprite.get_size() == (40, 40) for sprite in ui.arrow_sprites.values())
 
 
 def test_ui_scales_the_16_by_16_first_level_to_fit_the_play_area():

@@ -17,8 +17,10 @@ HUD_COLOR = (39, 77, 119)
 WORK_MAT_COLOR = (54, 56, 68)
 ARROW_TILE = WORK_MAT_COLOR
 ARROW_COLOR = (218, 240, 246)
-ARROW_CARD_ALPHA = 178
-HOVERED_ARROW_CARD_ALPHA = 148
+# Keep the covered picture as a faint colour hint; the dark mat still masks
+# enough detail that the silhouette cannot be read before it is cleared.
+ARROW_CARD_ALPHA = 140
+HOVERED_ARROW_CARD_ALPHA = 105
 ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)

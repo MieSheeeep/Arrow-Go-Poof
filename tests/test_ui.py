@@ -54,8 +54,8 @@ def test_known_material_colors_are_distinct():
 
 def test_arrow_cards_are_more_solid_but_hover_remains_more_transparent():
     assert ARROW_TILE == WORK_MAT_COLOR
-    assert ARROW_CARD_ALPHA == 178
-    assert HOVERED_ARROW_CARD_ALPHA == 148
+    assert ARROW_CARD_ALPHA == 140
+    assert HOVERED_ARROW_CARD_ALPHA == 105
     assert ARROW_CARD_ALPHA > HOVERED_ARROW_CARD_ALPHA
 
 

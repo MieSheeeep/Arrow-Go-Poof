@@ -4,6 +4,9 @@
 
 ![游戏运行截图](docs/assets/runtime-gameplay.png)
 
+![开始界面](docs/assets/runtime-start.png)
+![通关结果界面](docs/assets/runtime-result.png)
+
 ## 功能
 
 - 开始界面、游戏界面、通关/失败结果界面；

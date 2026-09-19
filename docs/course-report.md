@@ -16,6 +16,9 @@
 
 ![游戏运行截图](assets/runtime-gameplay.png)
 
+![开始界面](assets/runtime-start.png)
+![通关结果界面](assets/runtime-result.png)
+
 建议发布博客时补充：开始界面截图、碰撞变红截图、失败面板截图、最终通关截图，以及一段展示三关切换的 GIF 或视频。
 
 ## 2. 项目介绍

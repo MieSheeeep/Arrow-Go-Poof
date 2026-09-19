@@ -5,8 +5,8 @@ from src.board import Board
 from src.game import Game
 from src.levels import create_tree_board
 from src.ui import (
+    ARROW_COLOR,
     BACKGROUND,
-    ARROW_SPRITES_PATH,
     COLOR_MAP,
     MENU_BACKGROUND_PATH,
     MENU_PANEL_COLOR,
@@ -74,25 +74,28 @@ def test_main_menu_background_is_packaged_with_the_project():
     assert MENU_BACKGROUND_PATH.is_file()
 
 
-def test_pixel_arrow_sprite_sheet_is_packaged_and_split_by_direction():
+def test_normal_arrow_is_a_compact_centered_boomerang_marker():
     pygame.font.init()
-    screen = pygame.Surface(WINDOW_SIZE)
+    screen = pygame.Surface((100, 100))
+    screen.fill((0, 0, 0))
     ui = UI(screen, Game(create_tree_board))
+    ui.layout = GridLayout(origin=(0, 0), cell_size=36)
+    rect = pygame.Rect(32, 32, 36, 36)
 
-    assert ARROW_SPRITES_PATH.is_file()
-    assert set(ui.arrow_sprites) == {"U", "D", "L", "R"}
-    assert all(sprite.get_size() == (40, 40) for sprite in ui.arrow_sprites.values())
+    ui._draw_arrow(rect, "U", ARROW_COLOR)
 
-
-def test_hovered_arrow_sprite_is_more_transparent_than_idle_sprite():
-    pygame.font.init()
-    ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
-
-    idle = ui._scaled_arrow_sprite("U", 36, is_hovered=False)
-    hovered = ui._scaled_arrow_sprite("U", 36, is_hovered=True)
-
-    assert idle.get_alpha() == 164
-    assert hovered.get_alpha() == 104
+    occupied = [
+        (x, y)
+        for x in range(rect.left, rect.right)
+        for y in range(rect.top, rect.bottom)
+        if screen.get_at((x, y))[:3] != (0, 0, 0)
+    ]
+    assert min(x for x, _ in occupied) > rect.left + 8
+    assert max(x for x, _ in occupied) < rect.right - 8
+    assert min(y for _, y in occupied) > rect.top + 8
+    assert max(y for _, y in occupied) < rect.bottom - 8
+    # A boomerang is two short arms, not a filled triangle.
+    assert screen.get_at((rect.centerx, rect.centery + 4))[:3] == (0, 0, 0)
 
 
 def test_ui_scales_the_16_by_16_first_level_to_fit_the_play_area():

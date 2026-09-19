@@ -13,12 +13,11 @@ WINDOW_SIZE = (1200, 800)
 BACKGROUND = (126, 190, 232)
 HUD_COLOR = (39, 77, 119)
 ARROW_TILE = (235, 237, 235)
-ARROW_COLOR = (86, 102, 126)
+ARROW_COLOR = (218, 240, 246)
 ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
 MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
-ARROW_SPRITES_PATH = Path(__file__).resolve().parent.parent / "assets" / "arrow-sprites.png"
 MENU_PANEL_COLOR = (75, 48, 31)
 # The dark desk mat in the supplied work-table illustration. Puzzle cells stay
 # inside it so the board feels like a bead-art project on the work surface.
@@ -88,43 +87,7 @@ class UI:
             # onto headless test surfaces before a display mode exists.
             pygame.image.load(MENU_BACKGROUND_PATH), WINDOW_SIZE
         )
-        self.arrow_sprites = self._load_arrow_sprites()
         self._refresh_layout()
-
-    @staticmethod
-    def _load_arrow_sprites() -> dict[str, pygame.Surface]:
-        """Split the supplied 2×2 pixel-art arrow sheet into four icons."""
-        sheet = pygame.image.load(ARROW_SPRITES_PATH)
-        half_width = sheet.get_width() // 2
-        half_height = sheet.get_height() // 2
-        inset = 90
-        tile_width = half_width - inset * 2
-        tile_height = half_height - inset * 2
-        source_rects = {
-            "U": pygame.Rect(inset, inset, tile_width, tile_height),
-            "R": pygame.Rect(half_width + inset, inset, tile_width, tile_height),
-            "D": pygame.Rect(inset, half_height + inset, tile_width, tile_height),
-            "L": pygame.Rect(half_width + inset, half_height + inset, tile_width, tile_height),
-        }
-        return {
-            direction: pygame.transform.scale(sheet.subsurface(rect).copy(), (40, 40))
-            for direction, rect in source_rects.items()
-        }
-
-    def _scaled_arrow_sprite(
-        self,
-        direction: str,
-        size: int,
-        *,
-        is_hovered: bool,
-    ) -> pygame.Surface:
-        """Return a soft-glass arrow card, with extra transparency on hover."""
-        sprite = self.arrow_sprites[direction]
-        if sprite.get_width() != size:
-            sprite = pygame.transform.scale(sprite, (size, size))
-        sprite = sprite.copy()
-        sprite.set_alpha(104 if is_hovered else 164)
-        return sprite
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
         self._refresh_layout()
@@ -293,13 +256,13 @@ class UI:
         radius = max(6, self.layout.cell_size // 5)
 
         if is_arrow and not is_error:
-            # Let a restrained amount of the hidden picture colour show
-            # through the glass card. The sprite supplies the only hard edge.
+            # This is the one transparent outer card. The compact direction
+            # triangle below is the only opaque visual element inside it.
             glow_rect = rect.inflate(10 if is_hovered else 4, 10 if is_hovered else 4)
             glow = pygame.Surface(glow_rect.size, pygame.SRCALPHA)
             pygame.draw.rect(
                 glow,
-                (*HOVER_COLOR, 84 if is_hovered else 22),
+                (*HOVER_COLOR, 82 if is_hovered else 16),
                 glow.get_rect(),
                 border_radius=radius + 5,
             )
@@ -308,7 +271,7 @@ class UI:
             colour_wash = pygame.Surface(rect.size, pygame.SRCALPHA)
             pygame.draw.rect(
                 colour_wash,
-                (*fill, 104 if is_hovered else 76),
+                (*fill, 92 if is_hovered else 54),
                 colour_wash.get_rect(),
                 border_radius=radius,
             )
@@ -363,60 +326,32 @@ class UI:
         *,
         is_hovered: bool = False,
     ) -> None:
-        if color == ARROW_COLOR and direction in self.arrow_sprites:
-            icon_size = max(18, rect.width)
-            icon = self._scaled_arrow_sprite(
-                direction,
-                icon_size,
-                is_hovered=is_hovered,
-            )
-            self.screen.blit(icon, icon.get_rect(center=rect.center))
-            return
-
         center = rect.center
-        arm = self.layout.cell_size // 3
-        shaft = max(4, self.layout.cell_size // 7)
-        points = {
-            "U": [
-                (center[0], center[1] - arm),
-                (center[0] - arm // 2, center[1]),
-                (center[0] - shaft, center[1]),
-                (center[0] - shaft, center[1] + arm),
-                (center[0] + shaft, center[1] + arm),
-                (center[0] + shaft, center[1]),
-                (center[0] + arm // 2, center[1]),
-            ],
-            "D": [
-                (center[0], center[1] + arm),
-                (center[0] - arm // 2, center[1]),
-                (center[0] - shaft, center[1]),
-                (center[0] - shaft, center[1] - arm),
-                (center[0] + shaft, center[1] - arm),
-                (center[0] + shaft, center[1]),
-                (center[0] + arm // 2, center[1]),
-            ],
-            "L": [
-                (center[0] - arm, center[1]),
-                (center[0], center[1] - arm // 2),
-                (center[0], center[1] - shaft),
-                (center[0] + arm, center[1] - shaft),
-                (center[0] + arm, center[1] + shaft),
-                (center[0], center[1] + shaft),
-                (center[0], center[1] + arm // 2),
-            ],
-            "R": [
-                (center[0] + arm, center[1]),
-                (center[0], center[1] - arm // 2),
-                (center[0], center[1] - shaft),
-                (center[0] - arm, center[1] - shaft),
-                (center[0] - arm, center[1] + shaft),
-                (center[0], center[1] + shaft),
-                (center[0], center[1] + arm // 2),
-            ],
+        marker = max(6, self.layout.cell_size // 6)
+        arm_width = 3
+        x, y = center
+        arms = {
+            "U": (
+                [(x, y - marker), (x - marker, y + marker), (x - marker + arm_width, y + marker), (x, y - marker + arm_width)],
+                [(x, y - marker), (x + marker, y + marker), (x + marker - arm_width, y + marker), (x, y - marker + arm_width)],
+            ),
+            "D": (
+                [(x, y + marker), (x - marker, y - marker), (x - marker + arm_width, y - marker), (x, y + marker - arm_width)],
+                [(x, y + marker), (x + marker, y - marker), (x + marker - arm_width, y - marker), (x, y + marker - arm_width)],
+            ),
+            "L": (
+                [(x - marker, y), (x + marker, y - marker), (x + marker, y - marker + arm_width), (x - marker + arm_width, y)],
+                [(x - marker, y), (x + marker, y + marker), (x + marker, y + marker - arm_width), (x - marker + arm_width, y)],
+            ),
+            "R": (
+                [(x + marker, y), (x - marker, y - marker), (x - marker, y - marker + arm_width), (x + marker - arm_width, y)],
+                [(x + marker, y), (x - marker, y + marker), (x - marker, y + marker - arm_width), (x + marker - arm_width, y)],
+            ),
         }
-        shadow_points = [(x + 1, y + 2) for x, y in points[direction]]
-        pygame.draw.polygon(self.screen, (35, 48, 58), shadow_points)
-        pygame.draw.polygon(self.screen, color, points[direction])
+        for arm in arms[direction]:
+            shadow_points = [(point_x + 1, point_y + 2) for point_x, point_y in arm]
+            pygame.draw.polygon(self.screen, (29, 47, 59), shadow_points)
+            pygame.draw.polygon(self.screen, color, arm)
 
     def _draw_hud(self) -> None:
         pygame.draw.rect(self.screen, HUD_COLOR, (220, 22, 760, 62), border_radius=12)

@@ -5,6 +5,7 @@
 ![游戏运行截图](docs/assets/runtime-gameplay.png)
 
 ![开始界面](docs/assets/runtime-start.png)
+![游戏界面](docs/assets/runtime-gameplay.png)
 ![通关结果界面](docs/assets/runtime-result.png)
 
 ## 功能
@@ -20,7 +21,7 @@
 - 通关后进入下一关，失败后重开当前关，最终通关后可重新开始整局；
 - 无外部商业游戏代码、美术、音效或关卡资源。
 
-主界面工作桌背景使用提交者提供的图片资源，文件位于 `assets/menu-background.png`；第一关 BEAD BALL 根据提交者提供的 `.px` 拼豆工程图案转换为固定网格。其余界面与关卡图案均由 Pygame 基础图形绘制。
+开始界面和游戏界面共用提交者提供的工作桌图片资源，文件位于 `assets/menu-background.png`；箭头棋盘会始终居中放在桌垫内。第一关 BEAD BALL 根据提交者提供的 `.px` 拼豆工程图案转换为固定网格。其余界面与关卡图案均由 Pygame 基础图形绘制。
 
 ## 开发环境
 

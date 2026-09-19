@@ -4,7 +4,15 @@ import pytest
 from src.board import Board
 from src.game import Game
 from src.levels import create_tree_board
-from src.ui import BACKGROUND, COLOR_MAP, MENU_BACKGROUND_PATH, MENU_PANEL_COLOR, GridLayout, WINDOW_SIZE
+from src.ui import (
+    BACKGROUND,
+    COLOR_MAP,
+    MENU_BACKGROUND_PATH,
+    MENU_PANEL_COLOR,
+    WORK_MAT_RECT,
+    GridLayout,
+    WINDOW_SIZE,
+)
 from src.ui import UI
 
 
@@ -70,7 +78,54 @@ def test_ui_scales_the_16_by_16_first_level_to_fit_the_play_area():
     screen = pygame.Surface(WINDOW_SIZE)
     ui = UI(screen, Game(create_tree_board))
 
-    assert ui.layout.cell_size == 40
-    assert ui.layout.origin == (280, 130)
-    assert ui.cell_at((919, 769)) == (15, 15)
-    assert ui.cell_at((920, 770)) is None
+    assert ui.layout.cell_size == 36
+    assert ui.layout.origin == (312, 162)
+    assert ui.cell_at((887, 737)) == (15, 15)
+    assert ui.cell_at((888, 738)) is None
+    assert WORK_MAT_RECT.contains(
+        ui.layout.cell_rect(0, 0).union(ui.layout.cell_rect(15, 15))
+    )
+
+
+def test_gameplay_uses_the_same_desk_background_as_the_start_screen():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+
+    ui.draw()
+
+    assert screen.get_at((20, 400))[:3] == ui.menu_background.get_at((20, 400))[:3]
+
+
+def test_arrow_tiles_leave_their_rounded_corner_transparent():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+    ui.draw()
+    row, col = next(
+        (row, col)
+        for row, grid_row in enumerate(ui.game.board.arrow_grid)
+        for col, cell in enumerate(grid_row)
+        if cell is not None
+    )
+    tile = ui.layout.cell_rect(row, col)
+
+    assert screen.get_at(tile.topleft)[:3] == ui.menu_background.get_at(tile.topleft)[:3]
+
+
+def test_hovered_arrow_tile_uses_a_bright_cyan_outline(monkeypatch):
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+    row, col = next(
+        (row, col)
+        for row, grid_row in enumerate(ui.game.board.arrow_grid)
+        for col, cell in enumerate(grid_row)
+        if cell is not None
+    )
+    tile = ui.layout.cell_rect(row, col)
+    monkeypatch.setattr(pygame.mouse, "get_pos", lambda: tile.center)
+
+    ui.draw()
+
+    assert screen.get_at((tile.left + 1, tile.centery)).b > 220

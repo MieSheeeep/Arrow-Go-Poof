@@ -19,6 +19,9 @@ ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
 MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
 MENU_PANEL_COLOR = (75, 48, 31)
+# The dark desk mat in the supplied work-table illustration. Puzzle cells stay
+# inside it so the board feels like a bead-art project on the work surface.
+WORK_MAT_RECT = pygame.Rect(180, 160, 840, 580)
 COLOR_MAP = {
     "leaf_light": (138, 205, 90),
     "leaf": (105, 181, 78),
@@ -91,14 +94,17 @@ class UI:
         return self.layout.cell_at(position, self.game.board.rows, self.game.board.cols)
 
     def _refresh_layout(self) -> None:
-        """Center the current level while leaving room for the HUD."""
+        """Fit the current picture level inside the illustrated desk mat."""
         cell_size = min(
-            48,
-            640 // self.game.board.rows,
-            680 // self.game.board.cols,
+            42,
+            WORK_MAT_RECT.height // self.game.board.rows,
+            (WORK_MAT_RECT.width - 36) // self.game.board.cols,
         )
-        origin_x = (self.screen.get_width() - self.game.board.cols * cell_size) // 2
-        self.layout = GridLayout(origin=(origin_x, 130), cell_size=cell_size)
+        board_width = self.game.board.cols * cell_size
+        board_height = self.game.board.rows * cell_size
+        origin_x = WORK_MAT_RECT.x + (WORK_MAT_RECT.width - board_width) // 2
+        origin_y = WORK_MAT_RECT.y + (WORK_MAT_RECT.height - board_height) // 2
+        self.layout = GridLayout(origin=(origin_x, origin_y), cell_size=cell_size)
 
     def restart_rect(self) -> pygame.Rect:
         return self.result_action_rect()
@@ -170,29 +176,18 @@ class UI:
         self.screen.blit(self.menu_background, (0, 0))
 
     def _draw_background(self) -> None:
-        width, height = self.screen.get_size()
-        self.screen.fill(BACKGROUND)
-        horizon = height // 2
-        pygame.draw.rect(self.screen, (102, 164, 199), (0, horizon, width, height - horizon))
-        pygame.draw.polygon(
-            self.screen,
-            (78, 142, 177),
-            [(0, horizon + 60), (width // 6, horizon - 80), (width // 3, horizon + 60)],
-        )
-        pygame.draw.polygon(
-            self.screen,
-            (92, 155, 186),
-            [(width * 2 // 3, horizon + 70), (width * 5 // 6, horizon - 100), (width, horizon + 70)],
-        )
-        grass_top = height * 7 // 10
-        pygame.draw.rect(self.screen, (104, 170, 84), (0, grass_top, width, height - grass_top))
-        for x, y in [(width // 13, height // 8), (width * 17 // 20, height // 7), (width // 6, height // 3), (width * 19 // 24, height // 3)]:
-            pygame.draw.rect(self.screen, (245, 247, 238), (x, y, 92, 18))
-            pygame.draw.rect(self.screen, (245, 247, 238), (x + 24, y - 14, 58, 18))
+        """Keep gameplay and the start screen on the same craft desk."""
+        self.screen.blit(self.menu_background, (0, 0))
 
     def _draw_board(self) -> None:
         self._refresh_layout()
-        hover_cell = self.cell_at(pygame.mouse.get_pos())
+        try:
+            mouse_position = pygame.mouse.get_pos()
+        except pygame.error:
+            # Rendering unit tests do not create a video device; they simply
+            # have no hovered cell rather than needing one.
+            mouse_position = (-1, -1)
+        hover_cell = self.cell_at(mouse_position)
         active_cells = {
             (animation.row, animation.col) for animation in self.game.animations
         }
@@ -210,8 +205,13 @@ class UI:
                 is_active = (row, col) in active_cells
                 if has_arrow and not is_active:
                     fill = ERROR_TILE if (row, col) in self.game.error_cells else ARROW_TILE
-                pygame.draw.rect(self.screen, fill, rect)
-                pygame.draw.rect(self.screen, (67, 93, 112), rect, 1)
+                self._draw_tile(
+                    rect,
+                    fill,
+                    is_arrow=has_arrow,
+                    is_error=(row, col) in self.game.error_cells,
+                    is_hovered=hover_cell == (row, col),
+                )
 
                 if has_arrow and not is_active:
                     arrow_color = (
@@ -220,8 +220,6 @@ class UI:
                         else ARROW_COLOR
                     )
                     self._draw_arrow(rect, cell, arrow_color)
-                if hover_cell == (row, col):
-                    pygame.draw.rect(self.screen, HOVER_COLOR, rect, 2)
 
     def _draw_animations(self) -> None:
         for animation in self.game.animations:
@@ -232,8 +230,62 @@ class UI:
                 round(offset_row * self.layout.cell_size),
             )
             is_error = animation.color_state == "error"
-            pygame.draw.rect(self.screen, ERROR_TILE if is_error else ARROW_TILE, rect)
+            self._draw_tile(
+                rect,
+                ERROR_TILE if is_error else ARROW_TILE,
+                is_arrow=True,
+                is_error=is_error,
+            )
             self._draw_arrow(rect, animation.direction, ERROR_ARROW if is_error else ARROW_COLOR)
+
+    def _draw_tile(
+        self,
+        rect: pygame.Rect,
+        fill: tuple[int, int, int],
+        *,
+        is_arrow: bool,
+        is_error: bool = False,
+        is_hovered: bool = False,
+    ) -> None:
+        """Draw a soft, rounded bead card without hiding the desk texture."""
+        radius = max(6, self.layout.cell_size // 5)
+
+        # A compact shadow gives each bead/card depth. It begins below-right
+        # of the cell, leaving the tile's rounded top-left corner transparent.
+        shadow = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(
+            shadow,
+            (15, 24, 31, 76),
+            shadow.get_rect(),
+            border_radius=radius,
+        )
+        self.screen.blit(shadow, rect.move(2, 3).topleft)
+
+        tile = pygame.Surface(rect.size, pygame.SRCALPHA)
+        alpha = 156 if is_hovered else (218 if is_arrow else 196)
+        border = HOVER_COLOR if is_hovered else ((178, 70, 70) if is_error else (255, 255, 255))
+        border_alpha = 235 if is_hovered else (155 if is_arrow else 92)
+        pygame.draw.rect(
+            tile,
+            (*fill, alpha),
+            tile.get_rect(),
+            border_radius=radius,
+        )
+        pygame.draw.rect(
+            tile,
+            (*border, border_alpha),
+            tile.get_rect(),
+            width=3 if is_hovered else 1,
+            border_radius=radius,
+        )
+        pygame.draw.line(
+            tile,
+            (255, 255, 255, 98 if is_arrow else 62),
+            (radius, 2),
+            (rect.width - radius, 2),
+            width=1,
+        )
+        self.screen.blit(tile, rect.topleft)
 
     def _draw_arrow(
         self,
@@ -243,44 +295,47 @@ class UI:
     ) -> None:
         center = rect.center
         arm = self.layout.cell_size // 3
+        shaft = max(4, self.layout.cell_size // 7)
         points = {
             "U": [
                 (center[0], center[1] - arm),
                 (center[0] - arm // 2, center[1]),
-                (center[0] - 5, center[1]),
-                (center[0] - 5, center[1] + arm),
-                (center[0] + 5, center[1] + arm),
-                (center[0] + 5, center[1]),
+                (center[0] - shaft, center[1]),
+                (center[0] - shaft, center[1] + arm),
+                (center[0] + shaft, center[1] + arm),
+                (center[0] + shaft, center[1]),
                 (center[0] + arm // 2, center[1]),
             ],
             "D": [
                 (center[0], center[1] + arm),
                 (center[0] - arm // 2, center[1]),
-                (center[0] - 5, center[1]),
-                (center[0] - 5, center[1] - arm),
-                (center[0] + 5, center[1] - arm),
-                (center[0] + 5, center[1]),
+                (center[0] - shaft, center[1]),
+                (center[0] - shaft, center[1] - arm),
+                (center[0] + shaft, center[1] - arm),
+                (center[0] + shaft, center[1]),
                 (center[0] + arm // 2, center[1]),
             ],
             "L": [
                 (center[0] - arm, center[1]),
                 (center[0], center[1] - arm // 2),
-                (center[0], center[1] - 5),
-                (center[0] + arm, center[1] - 5),
-                (center[0] + arm, center[1] + 5),
-                (center[0], center[1] + 5),
+                (center[0], center[1] - shaft),
+                (center[0] + arm, center[1] - shaft),
+                (center[0] + arm, center[1] + shaft),
+                (center[0], center[1] + shaft),
                 (center[0], center[1] + arm // 2),
             ],
             "R": [
                 (center[0] + arm, center[1]),
                 (center[0], center[1] - arm // 2),
-                (center[0], center[1] - 5),
-                (center[0] - arm, center[1] - 5),
-                (center[0] - arm, center[1] + 5),
-                (center[0], center[1] + 5),
+                (center[0], center[1] - shaft),
+                (center[0] - arm, center[1] - shaft),
+                (center[0] - arm, center[1] + shaft),
+                (center[0], center[1] + shaft),
                 (center[0], center[1] + arm // 2),
             ],
         }
+        shadow_points = [(x + 1, y + 2) for x, y in points[direction]]
+        pygame.draw.polygon(self.screen, (35, 48, 58), shadow_points)
         pygame.draw.polygon(self.screen, color, points[direction])
 
     def _draw_hud(self) -> None:

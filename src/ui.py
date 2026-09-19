@@ -21,6 +21,13 @@ COLOR_MAP = {
     "trunk": (142, 91, 55),
     "grass": (86, 157, 73),
     "flower": (246, 193, 72),
+    "petal_light": (255, 171, 198),
+    "petal": (234, 104, 144),
+    "center": (247, 190, 64),
+    "stem": (94, 145, 63),
+    "sun": (252, 190, 55),
+    "ray": (255, 221, 104),
+    "sky": (126, 190, 232),
 }
 
 
@@ -61,6 +68,7 @@ class UI:
         self.layout = GridLayout(origin=(260, 130), cell_size=48)
         self.font = pygame.font.Font(None, 30)
         self.small_font = pygame.font.Font(None, 24)
+        self.title_font = pygame.font.Font(None, 56)
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
         return self.layout.cell_at(position, self.game.board.rows, self.game.board.cols)
@@ -90,25 +98,42 @@ class UI:
             self._draw_result_panel()
 
     def _draw_start_panel(self) -> None:
-        panel = pygame.Rect(0, 0, 560, 390)
-        panel.center = self.screen.get_rect().center
+        panel = pygame.Rect(150, 92, 900, 228)
         pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=18)
-
-        title = self.font.render("ARROW GO POOF", True, (250, 230, 133))
-        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.top + 82)))
-        subtitle = self.small_font.render(
-            "Reveal the hidden pixel pictures", True, (240, 245, 250)
+        pygame.draw.rect(
+            self.screen,
+            (57, 107, 156),
+            (panel.left, panel.top, panel.width, 11),
+            border_radius=18,
         )
-        self.screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.top + 140)))
+
+        # A tiny board motif makes this feel like a real main menu while
+        # keeping START GAME as the only actionable control.
+        for rect, direction, color in (
+            (pygame.Rect(218, 165, 44, 44), "U", (255, 221, 104)),
+            (pygame.Rect(264, 210, 44, 44), "R", (255, 171, 198)),
+            (pygame.Rect(890, 165, 44, 44), "D", (138, 205, 90)),
+            (pygame.Rect(936, 210, 44, 44), "L", (247, 190, 64)),
+        ):
+            pygame.draw.rect(self.screen, ARROW_TILE, rect, border_radius=7)
+            self._draw_arrow(rect, direction, color)
+
+        title = self.title_font.render("ARROW GO POOF", True, (250, 230, 133))
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.top + 66)))
+        subtitle = self.small_font.render(
+            "Follow the arrows. Reveal the picture.", True, (240, 245, 250)
+        )
+        self.screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.top + 126)))
         details = self.small_font.render(
-            f"{self.game.level_count} levels  •  {self.game.max_lives} mistakes allowed",
+            f"{self.game.level_count} pixel puzzles  |  {self.game.max_lives} mistakes per level",
             True,
             (240, 245, 250),
         )
-        self.screen.blit(details, details.get_rect(center=(panel.centerx, panel.top + 182)))
+        self.screen.blit(details, details.get_rect(center=(panel.centerx, panel.top + 166)))
 
         button = self.start_rect()
         pygame.draw.rect(self.screen, (105, 181, 78), button, border_radius=8)
+        pygame.draw.rect(self.screen, (168, 224, 131), button, 2, border_radius=8)
         label = self.small_font.render("START GAME", True, (255, 255, 255))
         self.screen.blit(label, label.get_rect(center=button.center))
 

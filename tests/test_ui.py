@@ -3,7 +3,7 @@ import pytest
 
 from src.board import Board
 from src.game import Game
-from src.ui import COLOR_MAP, GridLayout, WINDOW_SIZE
+from src.ui import BACKGROUND, COLOR_MAP, HUD_COLOR, GridLayout, WINDOW_SIZE
 from src.ui import UI
 
 
@@ -46,3 +46,15 @@ def test_ui_exposes_start_and_result_action_buttons():
 
     assert ui.start_rect().size == (260, 64)
     assert ui.result_action_rect().size == (220, 52)
+
+
+def test_start_screen_draws_a_distinct_title_panel_and_start_button():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
+
+    UI(screen, game).draw()
+
+    assert screen.get_at((195, 130))[:3] == HUD_COLOR
+    assert screen.get_at((600, 515))[:3] == (105, 181, 78)
+    assert screen.get_at((80, 80))[:3] == BACKGROUND

@@ -81,3 +81,11 @@ def test_tree_board_factory_returns_independent_boards():
     assert second.arrow_grid[0][6] == "U"
     assert second.color_grid[1][6] == "leaf"
     assert second.color_grid[8][6] == "trunk"
+
+
+def test_tree_factory_is_available_for_runtime_entry_point():
+    board = create_tree_board()
+
+    assert board.rows == 12
+    assert board.cols == 13
+    assert board.remaining_arrows() > 0

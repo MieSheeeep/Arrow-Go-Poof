@@ -12,10 +12,13 @@ from src.game import Game, GameState
 WINDOW_SIZE = (1200, 800)
 BACKGROUND = (126, 190, 232)
 HUD_COLOR = (39, 77, 119)
-ARROW_TILE = (235, 237, 235)
+# Sampled from the dark work mat at the centre of the supplied desk artwork.
+# Covered cells therefore hide the pixel picture instead of previewing it.
+WORK_MAT_COLOR = (54, 56, 68)
+ARROW_TILE = WORK_MAT_COLOR
 ARROW_COLOR = (218, 240, 246)
-ARROW_CARD_ALPHA = 155
-HOVERED_ARROW_CARD_ALPHA = 115
+ARROW_CARD_ALPHA = 178
+HOVERED_ARROW_CARD_ALPHA = 148
 ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
@@ -219,10 +222,14 @@ class UI:
 
                 rect = self.layout.cell_rect(row, col)
                 cell = self.game.board.arrow_grid[row][col]
-                fill = COLOR_MAP.get(color_name, COLOR_MAP["leaf"])
+                picture_fill = COLOR_MAP.get(color_name, COLOR_MAP["leaf"])
 
                 has_arrow = cell in {"U", "D", "L", "R"}
                 is_active = (row, col) in active_cells
+                # An uncleared arrow uses the work-mat colour rather than its
+                # hidden picture colour, so the picture is revealed only as
+                # arrows leave the board.
+                fill = ARROW_TILE if has_arrow else picture_fill
                 if has_arrow and not is_active and (row, col) in self.game.error_cells:
                     fill = ERROR_TILE
                 self._draw_tile(
@@ -272,7 +279,7 @@ class UI:
         is_error: bool = False,
         is_hovered: bool = False,
     ) -> None:
-        """Draw a soft, rounded bead card without hiding the desk texture."""
+        """Draw a soft, rounded arrow card that conceals the picture below."""
         radius = max(6, self.layout.cell_size // 5)
 
         if is_arrow and not is_error:

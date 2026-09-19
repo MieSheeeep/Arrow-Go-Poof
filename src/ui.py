@@ -41,6 +41,16 @@ COLOR_MAP = {
     "ball_shine": (235, 251, 247),
     "ball_white": (255, 255, 255),
     "ball_gray": (188, 192, 188),
+    "sword_outline": (8, 40, 33),
+    "sword_teal": (30, 140, 122),
+    "sword_highlight": (60, 235, 206),
+    "kitty_white": (250, 250, 250),
+    "moon_gold": (228, 197, 84),
+    "kitty_outline": (8, 8, 8),
+    "moon_shadow": (209, 162, 56),
+    "kitty_gray": (219, 219, 219),
+    "kitty_bow": (196, 18, 23),
+    "kitty_pink": (226, 176, 176),
 }
 
 
@@ -271,7 +281,7 @@ class UI:
             colour_wash = pygame.Surface(rect.size, pygame.SRCALPHA)
             pygame.draw.rect(
                 colour_wash,
-                (*fill, 92 if is_hovered else 54),
+                (*fill, 78 if is_hovered else 110),
                 colour_wash.get_rect(),
                 border_radius=radius,
             )

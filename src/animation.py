@@ -66,7 +66,7 @@ class FlyOutAnimation(_TimedAnimation):
         row: int,
         col: int,
         direction: str,
-        duration: float = 0.30,
+        duration: float = 0.50,
         distance: float | None = None,
     ) -> None:
         super().__init__(duration)

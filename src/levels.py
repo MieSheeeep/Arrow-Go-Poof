@@ -93,6 +93,168 @@ def create_tree_board() -> Board:
     return Board(arrow_grid, color_grid)
 
 
+# The supplied Diamond Sword project is a 16×16 canvas.  Its three sampled
+# bead colours are used here in a fixed, recognizable sword silhouette.
+DIAMOND_SWORD_LAYOUT_SEED = 2026092001
+_DIAMOND_SWORD_PIXEL_COLORS = {
+    "K": "sword_outline",
+    "T": "sword_teal",
+    "L": "sword_highlight",
+}
+_DIAMOND_SWORD_PIXEL_ROWS = (
+    ".............K..",
+    "............KTK.",
+    "...........KLTTK",
+    "..........KLTTK.",
+    ".........KLTTK..",
+    "........KLTTK...",
+    ".......KLTTK....",
+    "......KLTTK.....",
+    ".....KLTTK......",
+    "....KLTTK.......",
+    "...KLTTK........",
+    "..KLTTK.........",
+    ".KLLLLLK........",
+    "..KTTTK.........",
+    "...KTTK.........",
+    "....KK..........",
+)
+DIAMOND_SWORD_COLOR_GRID = tuple(
+    tuple(None if pixel == "." else _DIAMOND_SWORD_PIXEL_COLORS[pixel] for pixel in row)
+    for row in _DIAMOND_SWORD_PIXEL_ROWS
+)
+DIAMOND_SWORD_ARROW_GRID = (
+    (None, None, None, None, None, None, None, None, None, None, None, None, None, "U", None, None),
+    (None, None, None, None, None, None, None, None, None, None, None, None, "U", "L", "U", None),
+    (None, None, None, None, None, None, None, None, None, None, None, "L", "L", "U", "R", "D"),
+    (None, None, None, None, None, None, None, None, None, None, "U", "L", "U", "R", "R", None),
+    (None, None, None, None, None, None, None, None, None, "L", "U", "R", "R", "R", None, None),
+    (None, None, None, None, None, None, None, None, "L", "L", "D", "D", "U", None, None, None),
+    (None, None, None, None, None, None, None, "D", "U", "L", "R", "R", None, None, None, None),
+    (None, None, None, None, None, None, "U", "L", "L", "U", "R", None, None, None, None, None),
+    (None, None, None, None, None, "U", "U", "L", "R", "R", None, None, None, None, None, None),
+    (None, None, None, None, "L", "L", "D", "D", "R", None, None, None, None, None, None, None),
+    (None, None, None, "L", "L", "R", "R", "D", None, None, None, None, None, None, None, None),
+    (None, None, "U", "U", "U", "R", "R", None, None, None, None, None, None, None, None, None),
+    (None, "D", "U", "D", "U", "D", "D", "R", None, None, None, None, None, None, None, None),
+    (None, None, "D", "L", "D", "D", "D", None, None, None, None, None, None, None, None, None),
+    (None, None, None, "L", "R", "D", "D", None, None, None, None, None, None, None, None, None),
+    (None, None, None, None, "L", "D", None, None, None, None, None, None, None, None, None, None),
+)
+DIAMOND_SWORD_SOLUTION = (
+    (15, 4), (12, 1), (3, 10), (6, 11), (5, 8), (7, 6), (15, 5), (12, 7),
+    (9, 4), (1, 12), (14, 6), (11, 6), (6, 10), (0, 13), (2, 15), (7, 7),
+    (7, 10), (10, 7), (8, 5), (10, 3), (13, 2), (1, 13), (3, 14), (4, 10),
+    (2, 11), (14, 5), (11, 2), (10, 6), (9, 7), (1, 14), (13, 3), (3, 13),
+    (2, 13), (13, 6), (2, 12), (2, 14), (14, 4), (12, 6), (11, 3), (14, 3),
+    (4, 13), (8, 6), (10, 4), (12, 3), (8, 7), (11, 4), (8, 9), (13, 5),
+    (12, 5), (3, 12), (10, 5), (3, 11), (4, 9), (12, 4), (5, 11), (4, 12),
+    (11, 5), (13, 4), (5, 12), (5, 9), (6, 7), (9, 5), (6, 8), (4, 11),
+    (5, 10), (12, 2), (6, 9), (9, 8), (9, 6), (7, 8), (7, 9), (8, 8),
+)
+
+
+def create_diamond_sword_board() -> Board:
+    """Return a fresh Board for the Diamond Sword pixel pattern."""
+    return Board(
+        [list(row) for row in DIAMOND_SWORD_ARROW_GRID],
+        [list(row) for row in DIAMOND_SWORD_COLOR_GRID],
+    )
+
+
+# The supplied Moon Hello Kitty bead project is downsampled at design time to
+# an 18×17 grid.  Normal play uses these frozen rows, never runtime sampling.
+HELLO_KITTY_LAYOUT_SEED = 2026092003
+_HELLO_KITTY_PIXEL_COLORS = {
+    "W": "kitty_white",
+    "Y": "moon_gold",
+    "K": "kitty_outline",
+    "D": "moon_shadow",
+    "G": "kitty_gray",
+    "R": "kitty_bow",
+    "P": "kitty_pink",
+}
+_HELLO_KITTY_PIXEL_ROWS = (
+    "........DDDD......",
+    "..........DYYD....",
+    "............YYYD..",
+    "....K.....K..KDY..",
+    "...KGWKKKKRKKWKYY.",
+    "...KWWWGGGKKKWKKYD",
+    "...KGWWWWWGGKRRKYY",
+    "...KWWWWWWWWWRRKYY",
+    "D..KWWWWWWWWWGGKYY",
+    "D.KGWWKWWWWWKWWKYY",
+    "DDKKWWKWWYWKKWKKYY",
+    "DYDKWWPWWWWWPWKKYY",
+    ".YYYKWWWWKKWWWKYYY",
+    ".DYYYDKWWKWWDYYYY.",
+    "..DYYYYKKYKYYYYY..",
+    "...DYYYYYYYYYYY...",
+    ".....YYYYYYYYY....",
+)
+HELLO_KITTY_COLOR_GRID = tuple(
+    tuple(None if pixel == "." else _HELLO_KITTY_PIXEL_COLORS[pixel] for pixel in row)
+    for row in _HELLO_KITTY_PIXEL_ROWS
+)
+HELLO_KITTY_ARROW_GRID = (
+    (None, None, None, None, None, None, None, None, "U", "L", "R", "R", None, None, None, None, None, None),
+    (None, None, None, None, None, None, None, None, None, None, "R", "U", "R", "R", None, None, None, None),
+    (None, None, None, None, None, None, None, None, None, None, None, None, "U", "U", "U", "R", None, None),
+    (None, None, None, None, "L", None, None, None, None, None, "U", None, None, "U", "U", "L", None, None),
+    (None, None, None, "L", "U", "U", "U", "L", "U", "R", "U", "U", "U", "U", "U", "R", "U", None),
+    (None, None, None, "U", "L", "U", "U", "L", "U", "U", "R", "U", "R", "R", "R", "U", "R", "R"),
+    (None, None, None, "L", "L", "U", "U", "L", "L", "L", "U", "R", "U", "U", "U", "D", "R", "R"),
+    (None, None, None, "L", "U", "U", "U", "L", "U", "U", "U", "L", "U", "R", "R", "R", "R", "D"),
+    ("L", None, None, "U", "D", "L", "U", "L", "U", "L", "U", "R", "U", "R", "R", "D", "R", "R"),
+    ("L", None, "U", "L", "L", "U", "U", "L", "L", "L", "U", "U", "U", "R", "R", "R", "R", "R"),
+    ("L", "D", "L", "L", "L", "D", "U", "L", "D", "D", "U", "L", "U", "R", "U", "R", "R", "D"),
+    ("D", "L", "U", "D", "L", "L", "L", "D", "D", "D", "R", "D", "D", "D", "R", "D", "D", "R"),
+    (None, "L", "L", "L", "D", "L", "D", "L", "L", "R", "R", "R", "D", "R", "R", "D", "R", "D"),
+    (None, "L", "D", "D", "L", "L", "D", "L", "L", "D", "R", "D", "D", "D", "D", "R", "D", None),
+    (None, None, "D", "L", "D", "L", "L", "L", "D", "R", "D", "D", "R", "R", "R", "D", None, None),
+    (None, None, None, "L", "D", "D", "D", "D", "D", "D", "D", "D", "D", "R", "R", None, None, None),
+    (None, None, None, None, None, "L", "D", "D", "L", "D", "R", "D", "R", "D", None, None, None, None),
+)
+HELLO_KITTY_SOLUTION = (
+    (8, 17), (2, 14), (12, 1), (13, 16), (4, 3), (16, 11), (3, 14), (1, 13),
+    (14, 15), (11, 17), (6, 3), (2, 13), (0, 8), (0, 11), (10, 0), (16, 13),
+    (3, 13), (9, 0), (16, 12), (15, 11), (15, 4), (7, 3), (2, 15), (9, 2),
+    (9, 17), (14, 2), (14, 3), (4, 6), (11, 0), (13, 1), (14, 14), (5, 6),
+    (1, 12), (11, 1), (1, 11), (12, 17), (10, 1), (5, 3), (10, 2), (1, 10),
+    (0, 9), (4, 8), (10, 17), (9, 16), (4, 5), (14, 4), (0, 10), (10, 3),
+    (7, 17), (16, 5), (3, 10), (6, 17), (9, 3), (14, 13), (13, 2), (6, 6),
+    (12, 2), (11, 2), (7, 16), (16, 6), (5, 17), (5, 5), (16, 9), (12, 3),
+    (3, 4), (16, 7), (6, 5), (16, 10), (15, 3), (2, 12), (13, 15), (12, 15),
+    (16, 8), (7, 6), (7, 15), (15, 9), (13, 3), (3, 15), (8, 6), (12, 16),
+    (13, 4), (11, 15), (12, 14), (4, 16), (8, 3), (10, 16), (11, 3), (6, 4),
+    (9, 6), (15, 12), (15, 14), (8, 0), (4, 4), (15, 5), (9, 15), (13, 5),
+    (10, 6), (11, 16), (11, 4), (10, 15), (14, 5), (4, 10), (15, 7), (5, 16),
+    (15, 6), (6, 16), (4, 13), (5, 4), (7, 4), (9, 4), (15, 10), (4, 15),
+    (7, 5), (15, 8), (6, 7), (9, 14), (5, 15), (15, 13), (14, 6), (13, 6),
+    (12, 4), (10, 4), (14, 12), (4, 12), (4, 7), (5, 14), (14, 10), (5, 8),
+    (8, 4), (8, 16), (4, 14), (11, 5), (5, 13), (4, 11), (13, 12), (14, 7),
+    (5, 11), (12, 12), (8, 5), (5, 12), (6, 8), (7, 8), (8, 15), (4, 9),
+    (12, 13), (7, 7), (12, 6), (8, 8), (14, 11), (5, 10), (6, 14), (13, 7),
+    (6, 10), (14, 8), (8, 14), (12, 5), (8, 7), (14, 9), (13, 11), (9, 5),
+    (6, 15), (7, 10), (12, 7), (9, 13), (8, 13), (5, 7), (6, 13), (10, 5),
+    (11, 14), (8, 10), (12, 8), (13, 14), (6, 9), (12, 11), (9, 10), (13, 9),
+    (11, 6), (12, 10), (5, 9), (13, 13), (9, 7), (13, 10), (11, 12), (6, 12),
+    (7, 9), (11, 7), (10, 7), (6, 11), (13, 8), (7, 12), (11, 8), (12, 9),
+    (7, 14), (10, 14), (10, 8), (8, 9), (7, 13), (8, 12), (7, 11), (11, 9),
+    (8, 11), (10, 10), (9, 8), (11, 13), (9, 11), (9, 9), (10, 9), (10, 13),
+    (9, 12), (11, 11), (11, 10), (10, 11), (10, 12),
+)
+
+
+def create_hello_kitty_board() -> Board:
+    """Return a fresh Board for the Moon Hello Kitty pixel pattern."""
+    return Board(
+        [list(row) for row in HELLO_KITTY_ARROW_GRID],
+        [list(row) for row in HELLO_KITTY_COLOR_GRID],
+    )
+
+
 FLOWER_LAYOUT_SEED = 2026091901
 FLOWER_COLOR_GRID = (
     (None, None, None, None, None, "petal_light", "petal_light", "petal_light", None, None, None, None, None),
@@ -203,5 +365,9 @@ def create_sun_board() -> Board:
     )
 
 
-LEVEL_NAMES = ("BEAD BALL", "FLOWER", "SUN")
-LEVEL_FACTORIES = (create_tree_board, create_flower_board, create_sun_board)
+LEVEL_NAMES = ("DIAMOND SWORD", "BEAD BALL", "MOON KITTY")
+LEVEL_FACTORIES = (
+    create_diamond_sword_board,
+    create_tree_board,
+    create_hello_kitty_board,
+)

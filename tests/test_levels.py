@@ -1,4 +1,12 @@
 from src.levels import (
+    DIAMOND_SWORD_ARROW_GRID,
+    DIAMOND_SWORD_COLOR_GRID,
+    DIAMOND_SWORD_LAYOUT_SEED,
+    DIAMOND_SWORD_SOLUTION,
+    HELLO_KITTY_ARROW_GRID,
+    HELLO_KITTY_COLOR_GRID,
+    HELLO_KITTY_LAYOUT_SEED,
+    HELLO_KITTY_SOLUTION,
     FLOWER_ARROW_GRID,
     FLOWER_COLOR_GRID,
     FLOWER_LAYOUT_SEED,
@@ -16,7 +24,9 @@ from src.levels import (
     TREE_LAYOUT_SEED,
     TREE_SOLUTION,
     create_sample_board,
+    create_diamond_sword_board,
     create_flower_board,
+    create_hello_kitty_board,
     create_sun_board,
     create_tree_board,
 )
@@ -115,6 +125,24 @@ def test_course_has_three_named_level_factories():
     assert len(LEVEL_FACTORIES) == 3
     assert len(LEVEL_NAMES) == 3
     assert all(factory().remaining_arrows() > 0 for factory in LEVEL_FACTORIES)
+
+
+def test_runtime_campaign_uses_sword_ball_and_hello_kitty_in_order():
+    assert LEVEL_NAMES == ("DIAMOND SWORD", "BEAD BALL", "MOON KITTY")
+    assert LEVEL_FACTORIES == (
+        create_diamond_sword_board,
+        create_tree_board,
+        create_hello_kitty_board,
+    )
+    assert len(DIAMOND_SWORD_COLOR_GRID) == len(DIAMOND_SWORD_ARROW_GRID) == 16
+    assert len(HELLO_KITTY_COLOR_GRID) == len(HELLO_KITTY_ARROW_GRID) == 17
+    assert len(HELLO_KITTY_COLOR_GRID[0]) == len(HELLO_KITTY_ARROW_GRID[0]) == 18
+    assert _play_frozen_solution(create_diamond_sword_board, DIAMOND_SWORD_SOLUTION)
+    assert _play_frozen_solution(create_hello_kitty_board, HELLO_KITTY_SOLUTION)
+    sword = generate_solvable_layout(DIAMOND_SWORD_COLOR_GRID, DIAMOND_SWORD_LAYOUT_SEED)
+    kitty = generate_solvable_layout(HELLO_KITTY_COLOR_GRID, HELLO_KITTY_LAYOUT_SEED)
+    assert sword.arrow_grid == DIAMOND_SWORD_ARROW_GRID
+    assert kitty.arrow_grid == HELLO_KITTY_ARROW_GRID
 
 
 def test_extra_levels_use_all_four_arrow_directions():

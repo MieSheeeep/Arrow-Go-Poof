@@ -11,12 +11,12 @@ def test_fly_out_animation_moves_right_and_finishes():
     assert animation.offset_cells == (0.0, 0.0)
     assert animation.color_state == "normal"
 
-    animation.update(0.15)
+    animation.update(0.25)
     assert 0.0 < animation.offset_cells[1] < 2.0
     assert animation.offset_cells[0] == 0.0
     assert animation.is_finished is False
 
-    animation.update(0.15)
+    animation.update(0.25)
     assert animation.is_finished is True
     assert animation.offset_cells == pytest.approx((0.0, 2.0))
 
@@ -32,7 +32,7 @@ def test_fly_out_animation_moves_right_and_finishes():
 )
 def test_fly_out_animation_moves_in_each_direction(direction, expected):
     animation = FlyOutAnimation(2, 3, direction, distance=2.0)
-    animation.update(0.30)
+    animation.update(0.50)
     assert animation.offset_cells == pytest.approx(expected)
 
 

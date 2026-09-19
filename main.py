@@ -25,7 +25,7 @@ def main() -> None:
                     if game.state in {GameState.CLEARED, GameState.FAILED}:
                         if ui.restart_rect().collidepoint(event.pos):
                             game.restart()
-                    else:
+                    elif game.state is GameState.PLAYING:
                         cell = ui.cell_at(event.pos)
                         if cell is not None:
                             game.click(*cell)

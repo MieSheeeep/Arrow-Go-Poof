@@ -4,7 +4,7 @@
 
 **Goal:** Replace the small FLOWER/SUN levels with fixed, large, visually recognizable pixel-art puzzles whose varied arrow layouts are reproducibly generated and proven solvable, and upgrade the opening screen into a proper one-button main menu.
 
-**Architecture:** `src/level_generator.py` is a pure development/test utility: it constructs a solvable arrow layout in reverse removal order from a color mask and fixed seed. `src/levels.py` stores frozen tuple constants generated from that utility, so the runtime never varies. `UI` draws an art-directed main menu from existing primitive shapes; `Game` and Board rules remain unchanged.
+**Architecture:** `src/level_generator.py` is a pure development/test utility: it constructs a solvable arrow layout and its forward removal order from a color mask and fixed seed. `src/levels.py` stores frozen tuple constants generated from that utility, so the runtime never varies. `UI` draws an art-directed main menu from existing primitive shapes; `Game` and Board rules remain unchanged.
 
 **Tech Stack:** Python 3.10+, Pygame 2.6+, pytest 8+
 

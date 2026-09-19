@@ -1,3 +1,7 @@
+import math
+
+import pytest
+
 from src.animation import CollisionAnimation, FlyOutAnimation
 from src.board import Board
 from src.game import Game, GameState
@@ -23,6 +27,20 @@ def test_game_starts_in_playing_with_three_lives():
     assert game.board.remaining_arrows() == 1
     assert game.animations == []
     assert game.error_cells == set()
+
+
+def test_game_starts_cleared_when_factory_returns_empty_board():
+    game = Game(board_factory([["."]]))
+
+    assert game.state is GameState.CLEARED
+
+
+@pytest.mark.parametrize("delta_time", [-0.01, math.nan, math.inf])
+def test_update_rejects_invalid_delta_time_without_active_animations(delta_time):
+    game = Game(board_factory([["R"]]))
+
+    with pytest.raises(ValueError):
+        game.update(delta_time)
 
 
 def test_successful_click_clears_board_and_creates_fly_out_animation():

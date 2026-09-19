@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from enum import Enum
 from typing import Callable
 
@@ -31,7 +32,7 @@ class Game:
         self.board = self.board_factory()
         self.lives = self.max_lives
         self.mistakes = 0
-        self.state = GameState.PLAYING
+        self.state = GameState.CLEARED if self.board.is_cleared() else GameState.PLAYING
         self.animations: list[Animation] = []
         self.error_cells: set[tuple[int, int]] = set()
 
@@ -58,6 +59,8 @@ class Game:
         return result
 
     def update(self, delta_time: float) -> None:
+        if not math.isfinite(delta_time) or delta_time < 0:
+            raise ValueError("delta_time must be a finite non-negative number")
         remaining: list[Animation] = []
         for animation in self.animations:
             animation.update(delta_time)

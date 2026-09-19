@@ -97,16 +97,34 @@ class UI:
         sheet = pygame.image.load(ARROW_SPRITES_PATH)
         half_width = sheet.get_width() // 2
         half_height = sheet.get_height() // 2
+        inset = 90
+        tile_width = half_width - inset * 2
+        tile_height = half_height - inset * 2
         source_rects = {
-            "U": pygame.Rect(0, 0, half_width, half_height),
-            "R": pygame.Rect(half_width, 0, half_width, half_height),
-            "D": pygame.Rect(0, half_height, half_width, half_height),
-            "L": pygame.Rect(half_width, half_height, half_width, half_height),
+            "U": pygame.Rect(inset, inset, tile_width, tile_height),
+            "R": pygame.Rect(half_width + inset, inset, tile_width, tile_height),
+            "D": pygame.Rect(inset, half_height + inset, tile_width, tile_height),
+            "L": pygame.Rect(half_width + inset, half_height + inset, tile_width, tile_height),
         }
         return {
             direction: pygame.transform.scale(sheet.subsurface(rect).copy(), (40, 40))
             for direction, rect in source_rects.items()
         }
+
+    def _scaled_arrow_sprite(
+        self,
+        direction: str,
+        size: int,
+        *,
+        is_hovered: bool,
+    ) -> pygame.Surface:
+        """Return a soft-glass arrow card, with extra transparency on hover."""
+        sprite = self.arrow_sprites[direction]
+        if sprite.get_width() != size:
+            sprite = pygame.transform.scale(sprite, (size, size))
+        sprite = sprite.copy()
+        sprite.set_alpha(104 if is_hovered else 164)
+        return sprite
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
         self._refresh_layout()
@@ -222,8 +240,8 @@ class UI:
 
                 has_arrow = cell in {"U", "D", "L", "R"}
                 is_active = (row, col) in active_cells
-                if has_arrow and not is_active:
-                    fill = ERROR_TILE if (row, col) in self.game.error_cells else ARROW_TILE
+                if has_arrow and not is_active and (row, col) in self.game.error_cells:
+                    fill = ERROR_TILE
                 self._draw_tile(
                     rect,
                     fill,
@@ -238,7 +256,12 @@ class UI:
                         if (row, col) in self.game.error_cells
                         else ARROW_COLOR
                     )
-                    self._draw_arrow(rect, cell, arrow_color)
+                    self._draw_arrow(
+                        rect,
+                        cell,
+                        arrow_color,
+                        is_hovered=hover_cell == (row, col),
+                    )
 
     def _draw_animations(self) -> None:
         for animation in self.game.animations:
@@ -268,6 +291,29 @@ class UI:
     ) -> None:
         """Draw a soft, rounded bead card without hiding the desk texture."""
         radius = max(6, self.layout.cell_size // 5)
+
+        if is_arrow and not is_error:
+            # Let a restrained amount of the hidden picture colour show
+            # through the glass card. The sprite supplies the only hard edge.
+            glow_rect = rect.inflate(10 if is_hovered else 4, 10 if is_hovered else 4)
+            glow = pygame.Surface(glow_rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(
+                glow,
+                (*HOVER_COLOR, 84 if is_hovered else 22),
+                glow.get_rect(),
+                border_radius=radius + 5,
+            )
+            self.screen.blit(glow, glow_rect.topleft)
+
+            colour_wash = pygame.Surface(rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(
+                colour_wash,
+                (*fill, 104 if is_hovered else 76),
+                colour_wash.get_rect(),
+                border_radius=radius,
+            )
+            self.screen.blit(colour_wash, rect.topleft)
+            return
 
         # A compact shadow gives each bead/card depth. It begins below-right
         # of the cell, leaving the tile's rounded top-left corner transparent.
@@ -314,12 +360,16 @@ class UI:
         rect: pygame.Rect,
         direction: str,
         color: tuple[int, int, int],
+        *,
+        is_hovered: bool = False,
     ) -> None:
         if color == ARROW_COLOR and direction in self.arrow_sprites:
-            icon_size = max(18, rect.width - 4)
-            icon = self.arrow_sprites[direction]
-            if icon.get_width() != icon_size:
-                icon = pygame.transform.scale(icon, (icon_size, icon_size))
+            icon_size = max(18, rect.width)
+            icon = self._scaled_arrow_sprite(
+                direction,
+                icon_size,
+                is_hovered=is_hovered,
+            )
             self.screen.blit(icon, icon.get_rect(center=rect.center))
             return
 

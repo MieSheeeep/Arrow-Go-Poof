@@ -84,6 +84,17 @@ def test_pixel_arrow_sprite_sheet_is_packaged_and_split_by_direction():
     assert all(sprite.get_size() == (40, 40) for sprite in ui.arrow_sprites.values())
 
 
+def test_hovered_arrow_sprite_is_more_transparent_than_idle_sprite():
+    pygame.font.init()
+    ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
+
+    idle = ui._scaled_arrow_sprite("U", 36, is_hovered=False)
+    hovered = ui._scaled_arrow_sprite("U", 36, is_hovered=True)
+
+    assert idle.get_alpha() == 164
+    assert hovered.get_alpha() == 104
+
+
 def test_ui_scales_the_16_by_16_first_level_to_fit_the_play_area():
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)
@@ -124,7 +135,7 @@ def test_arrow_tiles_leave_their_rounded_corner_transparent():
     assert screen.get_at(tile.topleft)[:3] == ui.menu_background.get_at(tile.topleft)[:3]
 
 
-def test_hovered_arrow_tile_uses_a_bright_cyan_outline(monkeypatch):
+def test_hovered_arrow_tile_uses_a_soft_cyan_glow(monkeypatch):
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)
     ui = UI(screen, Game(create_tree_board))
@@ -139,4 +150,5 @@ def test_hovered_arrow_tile_uses_a_bright_cyan_outline(monkeypatch):
 
     ui.draw()
 
-    assert screen.get_at((tile.left + 1, tile.centery)).b > 220
+    glow_pixel = screen.get_at((tile.left + 1, tile.centery))
+    assert glow_pixel.b > glow_pixel.r + 25

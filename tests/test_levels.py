@@ -1,4 +1,11 @@
-from src.levels import SAMPLE_ARROW_GRID, SAMPLE_COLOR_GRID, create_sample_board
+from src.levels import (
+    SAMPLE_ARROW_GRID,
+    SAMPLE_COLOR_GRID,
+    TREE_ARROW_GRID,
+    TREE_COLOR_GRID,
+    create_sample_board,
+    create_tree_board,
+)
 
 
 def test_sample_board_factory_returns_independent_boards():
@@ -16,3 +23,33 @@ def test_sample_level_definitions_are_tuples_of_tuples():
     assert all(isinstance(row, tuple) for row in SAMPLE_ARROW_GRID)
     assert isinstance(SAMPLE_COLOR_GRID, tuple)
     assert all(isinstance(row, tuple) for row in SAMPLE_COLOR_GRID)
+
+
+def test_tree_level_definitions_are_12_by_13_tuples():
+    assert len(TREE_ARROW_GRID) == 12
+    assert len(TREE_COLOR_GRID) == 12
+    assert all(len(row) == 13 for row in TREE_ARROW_GRID)
+    assert all(len(row) == 13 for row in TREE_COLOR_GRID)
+    assert all(isinstance(row, tuple) for row in TREE_ARROW_GRID)
+    assert all(isinstance(row, tuple) for row in TREE_COLOR_GRID)
+
+
+def test_tree_level_arrow_and_color_masks_match():
+    arrow_mask = tuple(cell is not None for row in TREE_ARROW_GRID for cell in row)
+    color_mask = tuple(cell is not None for row in TREE_COLOR_GRID for cell in row)
+    assert arrow_mask == color_mask
+
+
+def test_tree_level_has_expected_top_and_trunk_cells():
+    assert TREE_ARROW_GRID[0][6] == "U"
+    assert TREE_COLOR_GRID[0][6] == "leaf_light"
+    assert TREE_COLOR_GRID[8][6] == "trunk"
+
+
+def test_tree_board_factory_returns_independent_boards():
+    first = create_tree_board()
+    second = create_tree_board()
+    first.arrow_grid[0][6] = "."
+    assert second.arrow_grid[0][6] == "U"
+    first.color_grid[8][6] = "changed"
+    assert second.color_grid[8][6] == "trunk"

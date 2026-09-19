@@ -24,7 +24,7 @@ def test_grid_layout_returns_pixel_rect_for_cell():
     assert rect.size == (48, 48)
 
 
-@pytest.mark.parametrize("cell_size", [0, -1, 1.5, True, 1201])
+@pytest.mark.parametrize("cell_size", [0, -1, 1.5, True, 801, 1201])
 def test_grid_layout_rejects_invalid_cell_sizes(cell_size):
     with pytest.raises(ValueError):
         GridLayout(origin=(0, 0), cell_size=cell_size)

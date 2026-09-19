@@ -26,7 +26,7 @@ COLOR_MAP = {
 
 class GridLayout:
     def __init__(self, origin: tuple[int, int], cell_size: int) -> None:
-        if type(cell_size) is not int or not 0 < cell_size <= max(WINDOW_SIZE):
+        if type(cell_size) is not int or not 0 < cell_size <= min(WINDOW_SIZE):
             raise ValueError("cell_size must be an integer within the window size")
         self.origin = origin
         self.cell_size = cell_size

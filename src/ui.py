@@ -15,12 +15,19 @@ ARROW_COLOR = (86, 102, 126)
 ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
+COLOR_MAP = {
+    "leaf_light": (138, 205, 90),
+    "leaf": (105, 181, 78),
+    "trunk": (142, 91, 55),
+    "grass": (86, 157, 73),
+    "flower": (246, 193, 72),
+}
 
 
 class GridLayout:
     def __init__(self, origin: tuple[int, int], cell_size: int) -> None:
-        if cell_size <= 0:
-            raise ValueError("cell_size must be positive")
+        if type(cell_size) is not int or not 0 < cell_size <= max(WINDOW_SIZE):
+            raise ValueError("cell_size must be an integer within the window size")
         self.origin = origin
         self.cell_size = cell_size
 
@@ -59,7 +66,9 @@ class UI:
         return self.layout.cell_at(position, self.game.board.rows, self.game.board.cols)
 
     def restart_rect(self) -> pygame.Rect:
-        return pygame.Rect(490, 505, 220, 52)
+        rect = pygame.Rect(0, 0, 220, 52)
+        rect.center = (self.screen.get_width() // 2, self.screen.get_height() // 2 + 105)
+        return rect
 
     def draw(self) -> None:
         self._draw_background()
@@ -70,20 +79,23 @@ class UI:
             self._draw_result_panel()
 
     def _draw_background(self) -> None:
+        width, height = self.screen.get_size()
         self.screen.fill(BACKGROUND)
-        pygame.draw.rect(self.screen, (102, 164, 199), (0, 350, 1200, 450))
+        horizon = height // 2
+        pygame.draw.rect(self.screen, (102, 164, 199), (0, horizon, width, height - horizon))
         pygame.draw.polygon(
             self.screen,
             (78, 142, 177),
-            [(0, 410), (190, 270), (390, 410)],
+            [(0, horizon + 60), (width // 6, horizon - 80), (width // 3, horizon + 60)],
         )
         pygame.draw.polygon(
             self.screen,
             (92, 155, 186),
-            [(760, 420), (970, 250), (1200, 420)],
+            [(width * 2 // 3, horizon + 70), (width * 5 // 6, horizon - 100), (width, horizon + 70)],
         )
-        pygame.draw.rect(self.screen, (104, 170, 84), (0, 560, 1200, 240))
-        for x, y in [(90, 95), (1030, 110), (180, 250), (950, 260)]:
+        grass_top = height * 7 // 10
+        pygame.draw.rect(self.screen, (104, 170, 84), (0, grass_top, width, height - grass_top))
+        for x, y in [(width // 13, height // 8), (width * 17 // 20, height // 7), (width // 6, height // 3), (width * 19 // 24, height // 3)]:
             pygame.draw.rect(self.screen, (245, 247, 238), (x, y, 92, 18))
             pygame.draw.rect(self.screen, (245, 247, 238), (x + 24, y - 14, 58, 18))
 
@@ -100,12 +112,7 @@ class UI:
 
                 rect = self.layout.cell_rect(row, col)
                 cell = self.game.board.arrow_grid[row][col]
-                if color_name == "trunk":
-                    fill = (142, 91, 55)
-                elif color_name == "grass":
-                    fill = (86, 157, 73)
-                else:
-                    fill = (105, 181, 78)
+                fill = COLOR_MAP.get(color_name, COLOR_MAP["leaf"])
 
                 has_arrow = cell in {"U", "D", "L", "R"}
                 is_active = (row, col) in active_cells
@@ -194,20 +201,27 @@ class UI:
         self.screen.blit(surface, (250, 42))
 
     def _draw_result_panel(self) -> None:
-        overlay = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((12, 28, 54, 120))
         self.screen.blit(overlay, (0, 0))
 
-        panel = pygame.Rect(365, 230, 470, 360)
+        panel = pygame.Rect(0, 0, 470, 360)
+        panel.center = self.screen.get_rect().center
         pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=16)
         title = "LEVEL CLEAR" if self.game.state is GameState.CLEARED else "TRY AGAIN"
         title_surface = self.font.render(title, True, (250, 230, 133))
-        self.screen.blit(title_surface, title_surface.get_rect(center=(600, 310)))
+        self.screen.blit(
+            title_surface,
+            title_surface.get_rect(center=(panel.centerx, panel.top + 80)),
+        )
 
         stats = self.small_font.render(
             f"Mistakes: {self.game.mistakes}", True, (240, 245, 250)
         )
-        self.screen.blit(stats, stats.get_rect(center=(600, 370)))
+        self.screen.blit(
+            stats,
+            stats.get_rect(center=(panel.centerx, panel.top + 140)),
+        )
 
         button = self.restart_rect()
         pygame.draw.rect(self.screen, (105, 181, 78), button, border_radius=8)

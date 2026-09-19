@@ -1,6 +1,7 @@
 import pygame
+import pytest
 
-from src.ui import GridLayout, WINDOW_SIZE
+from src.ui import COLOR_MAP, GridLayout, WINDOW_SIZE
 
 
 def test_window_and_grid_layout_match_mvp_design():
@@ -21,3 +22,14 @@ def test_grid_layout_returns_pixel_rect_for_cell():
     assert isinstance(rect, pygame.Rect)
     assert rect.topleft == (404, 226)
     assert rect.size == (48, 48)
+
+
+@pytest.mark.parametrize("cell_size", [0, -1, 1.5, True, 1201])
+def test_grid_layout_rejects_invalid_cell_sizes(cell_size):
+    with pytest.raises(ValueError):
+        GridLayout(origin=(0, 0), cell_size=cell_size)
+
+
+def test_known_material_colors_are_distinct():
+    assert COLOR_MAP["flower"] != COLOR_MAP["leaf"]
+    assert COLOR_MAP["leaf_light"] != COLOR_MAP["leaf"]

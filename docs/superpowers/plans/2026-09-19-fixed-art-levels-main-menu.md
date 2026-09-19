@@ -83,7 +83,7 @@ Use these interfaces:
 DIRECTIONS = (("U", -1, 0), ("D", 1, 0), ("L", 0, -1), ("R", 0, 1))
 
 def generate_solvable_arrow_grid(
-    mask: tuple[tuple[str | None, ...], ...], seed: int, attempts: int = 200
+    mask: tuple[tuple[str | None, ...], ...], seed: int
 ) -> tuple[tuple[str | None, ...], ...]: ...
 ```
 
@@ -186,7 +186,7 @@ Run `python -m pytest tests/test_ui.py::test_start_screen_draws_a_distinct_title
 
 - [ ] **Step 3: Implement art-directed main menu**
 
-Revise `_draw_start_panel()` to draw a 1200×800 composition with a wide, dark-blue title band, a decorative small tree/arrow motif, the Chinese title `一箭又一箭`, a one-line rule, and one green `START GAME` button. Keep `start_rect()` as the only actionable control; do not add level-select or exit buttons.
+Revise `_draw_start_panel()` to draw a 1200×800 composition with a wide, dark-blue title band, a decorative arrow-tile motif, the `ARROW GO POOF` title, a one-line rule, and one green `START GAME` button. Keep `start_rect()` as the only actionable control; do not add level-select or exit buttons.
 
 - [ ] **Step 4: Run UI and entry tests**
 

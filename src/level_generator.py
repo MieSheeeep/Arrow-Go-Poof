@@ -12,9 +12,6 @@ DIRECTIONS = (
     ("L", 0, -1),
     ("R", 0, 1),
 )
-ARROWS = frozenset(direction for direction, _, _ in DIRECTIONS)
-
-
 @dataclass(frozen=True)
 class GeneratedLayout:
     """A frozen arrow grid plus one verified order that clears it."""
@@ -28,19 +25,6 @@ def _validate_mask(mask: tuple[tuple[str | None, ...], ...]) -> None:
         raise ValueError("mask must be a non-empty rectangular grid")
     if not any(cell is not None for row in mask for cell in row):
         raise ValueError("mask must contain at least one puzzle cell")
-
-
-def _can_fly(
-    grid: list[list[str | None]], row: int, col: int, row_delta: int, col_delta: int
-) -> bool:
-    row += row_delta
-    col += col_delta
-    while 0 <= row < len(grid) and 0 <= col < len(grid[0]):
-        if grid[row][col] in ARROWS:
-            return False
-        row += row_delta
-        col += col_delta
-    return True
 
 
 def _is_clear_from_remaining(
@@ -64,7 +48,7 @@ def _is_clear_from_remaining(
 
 
 def generate_solvable_layout(
-    mask: tuple[tuple[str | None, ...], ...], seed: int, attempts: int = 200
+    mask: tuple[tuple[str | None, ...], ...], seed: int
 ) -> GeneratedLayout:
     """Create a reproducible varied layout and its valid forward clear order.
 
@@ -72,8 +56,8 @@ def generate_solvable_layout(
     constants, so normal play never depends on random generation.
     """
     _validate_mask(mask)
-    if type(seed) is not int or type(attempts) is not int or attempts <= 0:
-        raise ValueError("seed must be an integer and attempts must be positive")
+    if type(seed) is not int:
+        raise ValueError("seed must be an integer")
 
     coordinates = [
         (row_index, col_index)
@@ -138,7 +122,7 @@ def generate_solvable_layout(
 
 
 def generate_solvable_arrow_grid(
-    mask: tuple[tuple[str | None, ...], ...], seed: int, attempts: int = 200
+    mask: tuple[tuple[str | None, ...], ...], seed: int
 ) -> tuple[tuple[str | None, ...], ...]:
     """Return only the arrow grid for callers that do not need its solution."""
-    return generate_solvable_layout(mask, seed, attempts).arrow_grid
+    return generate_solvable_layout(mask, seed).arrow_grid

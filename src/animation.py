@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import math
+
+
+_EPSILON = 1e-9
 
 _DIRECTION_DELTAS = {
     "U": (-1.0, 0.0),
@@ -13,21 +17,23 @@ _DIRECTION_DELTAS = {
 
 class _TimedAnimation:
     def __init__(self, duration: float) -> None:
-        if duration <= 0:
+        if not math.isfinite(duration) or duration <= 0:
             raise ValueError("duration must be positive")
         self.duration = duration
         self.elapsed = 0.0
 
     @property
     def is_finished(self) -> bool:
-        return self.elapsed >= self.duration
+        return self.elapsed + _EPSILON >= self.duration
 
     @property
     def progress(self) -> float:
+        if self.is_finished:
+            return 1.0
         return min(self.elapsed / self.duration, 1.0)
 
     def update(self, delta_time: float) -> None:
-        if delta_time < 0:
+        if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("delta_time must be non-negative")
         self.elapsed = min(self.elapsed + delta_time, self.duration)
 
@@ -80,7 +86,7 @@ class CollisionAnimation(_TimedAnimation):
         retreat_duration: float = 0.16,
     ) -> None:
         for duration in (approach_duration, impact_duration, retreat_duration):
-            if duration <= 0:
+            if not math.isfinite(duration) or duration <= 0:
                 raise ValueError("collision phase durations must be positive")
         _direction_delta(direction)
         self.row = row
@@ -94,11 +100,11 @@ class CollisionAnimation(_TimedAnimation):
 
     @property
     def phase(self) -> str:
-        if self.elapsed < self.approach_duration:
+        if self.elapsed + _EPSILON < self.approach_duration:
             return "approach"
-        if self.elapsed < self.approach_duration + self.impact_duration:
+        if self.elapsed + _EPSILON < self.approach_duration + self.impact_duration:
             return "impact"
-        if not self.is_finished:
+        if self.elapsed + _EPSILON < self.duration:
             return "retreat"
         return "done"
 

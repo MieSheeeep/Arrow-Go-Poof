@@ -5,7 +5,13 @@ from __future__ import annotations
 import math
 
 
-_EPSILON = 1e-9
+_RELATIVE_TOLERANCE = 1e-9
+
+
+def _reached(value: float, boundary: float) -> bool:
+    return value >= boundary or math.isclose(
+        value, boundary, rel_tol=_RELATIVE_TOLERANCE, abs_tol=0.0
+    )
 
 _DIRECTION_DELTAS = {
     "U": (-1.0, 0.0),
@@ -24,7 +30,7 @@ class _TimedAnimation:
 
     @property
     def is_finished(self) -> bool:
-        return self.elapsed + _EPSILON >= self.duration
+        return _reached(self.elapsed, self.duration)
 
     @property
     def progress(self) -> float:
@@ -100,11 +106,11 @@ class CollisionAnimation(_TimedAnimation):
 
     @property
     def phase(self) -> str:
-        if self.elapsed + _EPSILON < self.approach_duration:
+        if not _reached(self.elapsed, self.approach_duration):
             return "approach"
-        if self.elapsed + _EPSILON < self.approach_duration + self.impact_duration:
+        if not _reached(self.elapsed, self.approach_duration + self.impact_duration):
             return "impact"
-        if self.elapsed + _EPSILON < self.duration:
+        if not _reached(self.elapsed, self.duration):
             return "retreat"
         return "done"
 

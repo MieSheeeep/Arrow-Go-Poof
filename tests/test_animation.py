@@ -96,6 +96,16 @@ def test_animation_clamps_oversized_update_to_completion():
     assert animation.offset_cells == pytest.approx((0.0, 2.0))
 
 
+def test_very_short_positive_duration_does_not_finish_at_creation():
+    animation = FlyOutAnimation(0, 0, "R", duration=1e-12)
+
+    assert animation.is_finished is False
+    animation.update(0.5e-12)
+    assert animation.is_finished is False
+    animation.update(0.5e-12)
+    assert animation.is_finished is True
+
+
 def test_collision_phase_boundary_tolerates_float_accumulation():
     animation = CollisionAnimation(0, 0, (0, 1), "R")
     for _ in range(10):

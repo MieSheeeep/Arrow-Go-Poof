@@ -6,7 +6,7 @@ from src.animation import CollisionAnimation, FlyOutAnimation
 
 
 def test_fly_out_animation_moves_right_and_finishes():
-    animation = FlyOutAnimation(2, 3, "R")
+    animation = FlyOutAnimation(2, 3, "R", distance=2.0)
 
     assert animation.offset_cells == (0.0, 0.0)
     assert animation.color_state == "normal"
@@ -31,9 +31,26 @@ def test_fly_out_animation_moves_right_and_finishes():
     ],
 )
 def test_fly_out_animation_moves_in_each_direction(direction, expected):
-    animation = FlyOutAnimation(2, 3, direction)
+    animation = FlyOutAnimation(2, 3, direction, distance=2.0)
     animation.update(0.30)
     assert animation.offset_cells == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("direction", "expected_offset"),
+    [
+        ("U", (-16.0, 0.0)),
+        ("D", (16.0, 0.0)),
+        ("L", (0.0, -20.0)),
+        ("R", (0.0, 20.0)),
+    ],
+)
+def test_default_fly_out_distance_carries_arrow_past_window(direction, expected_offset):
+    animation = FlyOutAnimation(0, 0, direction)
+
+    animation.update(animation.duration)
+
+    assert animation.offset_cells == pytest.approx(expected_offset)
 
 
 def test_collision_animation_changes_to_error_at_impact_then_retracts():
@@ -88,7 +105,7 @@ def test_animation_rejects_invalid_delta_time(delta_time):
 
 
 def test_animation_clamps_oversized_update_to_completion():
-    animation = FlyOutAnimation(0, 0, "R")
+    animation = FlyOutAnimation(0, 0, "R", distance=2.0)
     animation.update(10.0)
 
     assert animation.is_finished is True

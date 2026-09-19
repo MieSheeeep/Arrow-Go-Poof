@@ -20,6 +20,15 @@ _DIRECTION_DELTAS = {
     "R": (0.0, 1.0),
 }
 
+# Distances are measured in grid cells. They carry an arrow from anywhere in
+# the fixed 1200x800 playfield beyond the corresponding screen edge.
+_DEFAULT_FLY_OUT_DISTANCES = {
+    "U": 16.0,
+    "D": 16.0,
+    "L": 20.0,
+    "R": 20.0,
+}
+
 
 class _TimedAnimation:
     def __init__(self, duration: float) -> None:
@@ -58,12 +67,14 @@ class FlyOutAnimation(_TimedAnimation):
         col: int,
         direction: str,
         duration: float = 0.30,
-        distance: float = 2.0,
+        distance: float | None = None,
     ) -> None:
         super().__init__(duration)
-        if distance <= 0:
-            raise ValueError("distance must be positive")
         _direction_delta(direction)
+        if distance is None:
+            distance = _DEFAULT_FLY_OUT_DISTANCES[direction]
+        if not math.isfinite(distance) or distance <= 0:
+            raise ValueError("distance must be positive")
         self.row = row
         self.col = col
         self.direction = direction

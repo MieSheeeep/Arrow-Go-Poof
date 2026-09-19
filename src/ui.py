@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pygame
 
 from src.game import Game, GameState
@@ -15,6 +17,7 @@ ARROW_COLOR = (86, 102, 126)
 ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
+MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
 COLOR_MAP = {
     "leaf_light": (138, 205, 90),
     "leaf": (105, 181, 78),
@@ -69,6 +72,11 @@ class UI:
         self.font = pygame.font.Font(None, 30)
         self.small_font = pygame.font.Font(None, 24)
         self.title_font = pygame.font.Font(None, 56)
+        self.menu_background = pygame.transform.smoothscale(
+            # Keep the source surface unconverted so UI can also be rendered
+            # onto headless test surfaces before a display mode exists.
+            pygame.image.load(MENU_BACKGROUND_PATH), WINDOW_SIZE
+        )
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
         return self.layout.cell_at(position, self.game.board.rows, self.game.board.cols)
@@ -87,10 +95,11 @@ class UI:
         return rect
 
     def draw(self) -> None:
-        self._draw_background()
         if self.game.state is GameState.START:
+            self._draw_menu_background()
             self._draw_start_panel()
             return
+        self._draw_background()
         self._draw_board()
         self._draw_animations()
         self._draw_hud()
@@ -136,6 +145,10 @@ class UI:
         pygame.draw.rect(self.screen, (168, 224, 131), button, 2, border_radius=8)
         label = self.small_font.render("START GAME", True, (255, 255, 255))
         self.screen.blit(label, label.get_rect(center=button.center))
+
+    def _draw_menu_background(self) -> None:
+        """Draw the generated landscape behind the one-button main menu."""
+        self.screen.blit(self.menu_background, (0, 0))
 
     def _draw_background(self) -> None:
         width, height = self.screen.get_size()

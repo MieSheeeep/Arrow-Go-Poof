@@ -5,6 +5,7 @@ import pytest
 from src.animation import CollisionAnimation, FlyOutAnimation
 from src.board import Board
 from src.game import Game, GameState
+from src.levels import LEVEL_FACTORIES, LEVEL_NAMES
 
 
 def board_factory(arrows):
@@ -118,3 +119,42 @@ def test_restart_restores_board_and_runtime_state():
     assert game.board.get_cell(0, 0) == "R"
     assert game.animations == []
     assert game.error_cells == set()
+
+
+def test_campaign_can_start_from_menu_and_reports_level_count():
+    game = Game(LEVEL_FACTORIES, start_in_menu=True)
+
+    assert game.state is GameState.START
+    assert game.level_count == 3
+    assert game.level_index == 0
+    assert game.level_number == 1
+
+
+def test_start_enters_first_level_and_next_level_replaces_board():
+    game = Game(LEVEL_FACTORIES, start_in_menu=True, level_names=LEVEL_NAMES)
+
+    game.start()
+    first_board = game.board
+    assert game.state is GameState.PLAYING
+    assert game.level_name == "TREE"
+
+    game.state = GameState.CLEARED
+    assert game.next_level() is True
+    assert game.level_index == 1
+    assert game.level_name == "FLOWER"
+    assert game.board is not first_board
+    assert game.state is GameState.PLAYING
+
+
+def test_last_level_reports_no_next_level_and_campaign_restart_returns_to_first():
+    game = Game(LEVEL_FACTORIES)
+
+    game.level_index = 2
+    game.restart()
+    game.state = GameState.CLEARED
+    assert game.has_next_level is False
+    assert game.next_level() is False
+
+    game.restart_campaign()
+    assert game.level_index == 0
+    assert game.state is GameState.PLAYING

@@ -66,17 +66,51 @@ class UI:
         return self.layout.cell_at(position, self.game.board.rows, self.game.board.cols)
 
     def restart_rect(self) -> pygame.Rect:
+        return self.result_action_rect()
+
+    def start_rect(self) -> pygame.Rect:
+        rect = pygame.Rect(0, 0, 260, 64)
+        rect.center = (self.screen.get_width() // 2, self.screen.get_height() // 2 + 115)
+        return rect
+
+    def result_action_rect(self) -> pygame.Rect:
         rect = pygame.Rect(0, 0, 220, 52)
         rect.center = (self.screen.get_width() // 2, self.screen.get_height() // 2 + 105)
         return rect
 
     def draw(self) -> None:
         self._draw_background()
+        if self.game.state is GameState.START:
+            self._draw_start_panel()
+            return
         self._draw_board()
         self._draw_animations()
         self._draw_hud()
         if self.game.state in {GameState.CLEARED, GameState.FAILED}:
             self._draw_result_panel()
+
+    def _draw_start_panel(self) -> None:
+        panel = pygame.Rect(0, 0, 560, 390)
+        panel.center = self.screen.get_rect().center
+        pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=18)
+
+        title = self.font.render("ARROW GO POOF", True, (250, 230, 133))
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.top + 82)))
+        subtitle = self.small_font.render(
+            "Reveal the hidden pixel pictures", True, (240, 245, 250)
+        )
+        self.screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.top + 140)))
+        details = self.small_font.render(
+            f"{self.game.level_count} levels  •  {self.game.max_lives} mistakes allowed",
+            True,
+            (240, 245, 250),
+        )
+        self.screen.blit(details, details.get_rect(center=(panel.centerx, panel.top + 182)))
+
+        button = self.start_rect()
+        pygame.draw.rect(self.screen, (105, 181, 78), button, border_radius=8)
+        label = self.small_font.render("START GAME", True, (255, 255, 255))
+        self.screen.blit(label, label.get_rect(center=button.center))
 
     def _draw_background(self) -> None:
         width, height = self.screen.get_size()
@@ -194,7 +228,8 @@ class UI:
     def _draw_hud(self) -> None:
         pygame.draw.rect(self.screen, HUD_COLOR, (220, 22, 760, 62), border_radius=12)
         text = (
-            f"LEVEL 01    LIVES {self.game.lives}    "
+            f"LEVEL {self.game.level_number:02d}/{self.game.level_count} {self.game.level_name}    "
+            f"LIVES {self.game.lives}    "
             f"MISTAKES {self.game.mistakes}    ARROWS {self.game.board.remaining_arrows()}"
         )
         surface = self.font.render(text, True, (250, 230, 133))
@@ -208,7 +243,12 @@ class UI:
         panel = pygame.Rect(0, 0, 470, 360)
         panel.center = self.screen.get_rect().center
         pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=16)
-        title = "LEVEL CLEAR" if self.game.state is GameState.CLEARED else "TRY AGAIN"
+        if self.game.state is GameState.FAILED:
+            title = "TRY AGAIN"
+        elif self.game.has_next_level:
+            title = "LEVEL CLEAR"
+        else:
+            title = "ALL CLEAR"
         title_surface = self.font.render(title, True, (250, 230, 133))
         self.screen.blit(
             title_surface,
@@ -223,7 +263,13 @@ class UI:
             stats.get_rect(center=(panel.centerx, panel.top + 140)),
         )
 
-        button = self.restart_rect()
+        button = self.result_action_rect()
         pygame.draw.rect(self.screen, (105, 181, 78), button, border_radius=8)
-        label = self.small_font.render("RESTART", True, (255, 255, 255))
+        if self.game.state is GameState.FAILED:
+            button_text = "RESTART LEVEL"
+        elif self.game.has_next_level:
+            button_text = "NEXT LEVEL"
+        else:
+            button_text = "RESTART GAME"
+        label = self.small_font.render(button_text, True, (255, 255, 255))
         self.screen.blit(label, label.get_rect(center=button.center))

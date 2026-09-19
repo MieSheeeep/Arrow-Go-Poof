@@ -1,7 +1,10 @@
 import pygame
 import pytest
 
+from src.board import Board
+from src.game import Game
 from src.ui import COLOR_MAP, GridLayout, WINDOW_SIZE
+from src.ui import UI
 
 
 def test_window_and_grid_layout_match_mvp_design():
@@ -33,3 +36,13 @@ def test_grid_layout_rejects_invalid_cell_sizes(cell_size):
 def test_known_material_colors_are_distinct():
     assert COLOR_MAP["flower"] != COLOR_MAP["leaf"]
     assert COLOR_MAP["leaf_light"] != COLOR_MAP["leaf"]
+
+
+def test_ui_exposes_start_and_result_action_buttons():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
+    ui = UI(screen, game)
+
+    assert ui.start_rect().size == (260, 64)
+    assert ui.result_action_rect().size == (220, 52)

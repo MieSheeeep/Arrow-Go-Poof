@@ -2,7 +2,7 @@
 import pygame
 
 from src.game import Game, GameState
-from src.levels import create_tree_board
+from src.levels import LEVEL_FACTORIES, LEVEL_NAMES
 from src.ui import UI, WINDOW_SIZE
 
 
@@ -12,9 +12,17 @@ def process_event(event: pygame.event.Event, game: Game, ui: UI) -> bool:
     if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
         return True
 
-    if game.state in {GameState.CLEARED, GameState.FAILED}:
-        if ui.restart_rect().collidepoint(event.pos):
-            game.restart()
+    if game.state is GameState.START:
+        if ui.start_rect().collidepoint(event.pos):
+            game.start()
+    elif game.state in {GameState.CLEARED, GameState.FAILED}:
+        if ui.result_action_rect().collidepoint(event.pos):
+            if game.state is GameState.FAILED:
+                game.restart()
+            elif game.has_next_level:
+                game.next_level()
+            else:
+                game.restart_campaign()
     elif game.state is GameState.PLAYING:
         cell = ui.cell_at(event.pos)
         if cell is not None:
@@ -27,7 +35,11 @@ def main() -> None:
     try:
         screen = pygame.display.set_mode(WINDOW_SIZE)
         pygame.display.set_caption("一箭又一箭")
-        game = Game(create_tree_board)
+        game = Game(
+            LEVEL_FACTORIES,
+            start_in_menu=True,
+            level_names=LEVEL_NAMES,
+        )
         ui = UI(screen, game)
         clock = pygame.time.Clock()
         running = True

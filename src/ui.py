@@ -18,6 +18,8 @@ ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
 MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
+MENU_PANEL_COLOR = (75, 48, 31)
+DESK_MAT_COLOR = (55, 77, 82)
 COLOR_MAP = {
     "leaf_light": (138, 205, 90),
     "leaf": (105, 181, 78),
@@ -108,10 +110,10 @@ class UI:
 
     def _draw_start_panel(self) -> None:
         panel = pygame.Rect(150, 92, 900, 228)
-        pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=18)
+        pygame.draw.rect(self.screen, MENU_PANEL_COLOR, panel, border_radius=18)
         pygame.draw.rect(
             self.screen,
-            (57, 107, 156),
+            (145, 95, 55),
             (panel.left, panel.top, panel.width, 11),
             border_radius=18,
         )
@@ -147,8 +149,15 @@ class UI:
         self.screen.blit(label, label.get_rect(center=button.center))
 
     def _draw_menu_background(self) -> None:
-        """Draw the generated landscape behind the one-button main menu."""
+        """Draw the generated work desk and its central game mat."""
         self.screen.blit(self.menu_background, (0, 0))
+        shadow = pygame.Rect(244, 340, 712, 326)
+        mat = pygame.Rect(260, 352, 680, 300)
+        pygame.draw.rect(self.screen, (36, 29, 25), shadow, border_radius=22)
+        pygame.draw.rect(self.screen, DESK_MAT_COLOR, mat, border_radius=18)
+        pygame.draw.rect(self.screen, (117, 144, 143), mat, 2, border_radius=18)
+        pygame.draw.line(self.screen, (87, 111, 112), (282, 372), (918, 372), 1)
+        pygame.draw.line(self.screen, (87, 111, 112), (282, 632), (918, 632), 1)
 
     def _draw_background(self) -> None:
         width, height = self.screen.get_size()

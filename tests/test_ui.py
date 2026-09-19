@@ -3,7 +3,7 @@ import pytest
 
 from src.board import Board
 from src.game import Game
-from src.ui import BACKGROUND, COLOR_MAP, HUD_COLOR, MENU_BACKGROUND_PATH, GridLayout, WINDOW_SIZE
+from src.ui import BACKGROUND, COLOR_MAP, MENU_BACKGROUND_PATH, MENU_PANEL_COLOR, GridLayout, WINDOW_SIZE
 from src.ui import UI
 
 
@@ -55,9 +55,19 @@ def test_start_screen_draws_a_distinct_title_panel_and_start_button():
 
     UI(screen, game).draw()
 
-    assert screen.get_at((195, 130))[:3] == HUD_COLOR
+    assert screen.get_at((195, 130))[:3] == MENU_PANEL_COLOR
     assert screen.get_at((600, 515))[:3] == (105, 181, 78)
     assert screen.get_at((80, 80))[:3] != BACKGROUND
+
+
+def test_start_screen_draws_a_central_desk_mat():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
+
+    UI(screen, game).draw()
+
+    assert screen.get_at((600, 400))[:3] == (55, 77, 82)
 
 
 def test_main_menu_background_is_packaged_with_the_project():

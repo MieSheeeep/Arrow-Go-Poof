@@ -149,6 +149,24 @@ def test_arrow_tiles_leave_their_rounded_corner_transparent():
     assert screen.get_at(tile.topleft)[:3] == ui.menu_background.get_at(tile.topleft)[:3]
 
 
+def test_cleared_pixel_uses_its_unmodified_picture_colour():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+    row, col = next(
+        (row, col)
+        for row, grid_row in enumerate(ui.game.board.arrow_grid)
+        for col, cell in enumerate(grid_row)
+        if cell is not None
+    )
+    colour_name = ui.game.board.color_grid[row][col]
+    ui.game.board.arrow_grid[row][col] = None
+
+    ui.draw()
+
+    assert screen.get_at(ui.layout.cell_rect(row, col).center)[:3] == COLOR_MAP[colour_name]
+
+
 def test_hovered_arrow_tile_uses_a_soft_cyan_glow(monkeypatch):
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)

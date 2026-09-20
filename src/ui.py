@@ -225,22 +225,22 @@ class UI:
                 rect = self.layout.cell_rect(row, col)
                 cell = self.game.board.arrow_grid[row][col]
                 picture_fill = COLOR_MAP.get(color_name, COLOR_MAP["leaf"])
+                self._draw_picture_pixel(rect, picture_fill)
 
                 has_arrow = cell in {"U", "D", "L", "R"}
                 is_active = (row, col) in active_cells
-                # An uncleared arrow uses the work-mat colour rather than its
-                # hidden picture colour, so the picture is revealed only as
-                # arrows leave the board.
-                fill = ARROW_TILE if has_arrow else picture_fill
-                if has_arrow and not is_active and (row, col) in self.game.error_cells:
-                    fill = ERROR_TILE
-                self._draw_tile(
-                    rect,
-                    fill,
-                    is_arrow=has_arrow,
-                    is_error=(row, col) in self.game.error_cells,
-                    is_hovered=hover_cell == (row, col),
-                )
+                # Always paint the supplied pixel colour first. An uncleared
+                # arrow then adds only a transparent work-mat card above it,
+                # leaving a subtle preview rather than permanently darkening
+                # the bead picture.
+                if has_arrow and not is_active:
+                    self._draw_tile(
+                        rect,
+                        ERROR_TILE if (row, col) in self.game.error_cells else ARROW_TILE,
+                        is_arrow=True,
+                        is_error=(row, col) in self.game.error_cells,
+                        is_hovered=hover_cell == (row, col),
+                    )
 
                 if has_arrow and not is_active:
                     arrow_color = (
@@ -254,6 +254,11 @@ class UI:
                         arrow_color,
                         is_hovered=hover_cell == (row, col),
                     )
+
+    def _draw_picture_pixel(self, rect: pygame.Rect, fill: tuple[int, int, int]) -> None:
+        """Paint the revealed bead colour without blending it with the desk."""
+        radius = max(6, self.layout.cell_size // 5)
+        pygame.draw.rect(self.screen, fill, rect, border_radius=radius)
 
     def _draw_animations(self) -> None:
         for animation in self.game.animations:
@@ -322,7 +327,7 @@ class UI:
         # The card is purposefully quiet: direction is communicated by the
         # supplied pixel arrow, while its backing only preserves hit-area and
         # hover readability.
-        alpha = 102 if is_hovered else (58 if is_arrow else 172)
+        alpha = 210 if is_error else (102 if is_hovered else (58 if is_arrow else 172))
         border = HOVER_COLOR if is_hovered else ((178, 70, 70) if is_error else (255, 255, 255))
         border_alpha = 235 if is_hovered else (72 if is_arrow else 92)
         pygame.draw.rect(

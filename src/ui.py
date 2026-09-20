@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pygame
 
+from src.animation import FlyOutAnimation
 from src.game import Game, GameState
 
 
@@ -37,12 +38,18 @@ MENU_PANEL_COLOR = (75, 48, 31)
 # The dark desk mat in the supplied work-table illustration. Puzzle cells stay
 # inside it so the board feels like a bead-art project on the work surface.
 WORK_MAT_RECT = pygame.Rect(180, 160, 840, 580)
+REVEAL_GLOW_DURATION = 0.22
 
 
 def format_elapsed_time(seconds: float) -> str:
     """Format a non-negative level duration as MM:SS.hh."""
     minutes, remaining = divmod(seconds, 60.0)
     return f"{int(minutes):02d}:{remaining:05.2f}"
+
+
+def reveal_glow_strength(animation: FlyOutAnimation) -> float:
+    """Return the immediate-to-zero intensity for a successful reveal."""
+    return max(0.0, 1.0 - animation.elapsed / REVEAL_GLOW_DURATION)
 
 
 def rating_star_points(
@@ -438,6 +445,36 @@ class UI:
         radius = max(6, self.layout.cell_size // 5)
         pygame.draw.rect(self.screen, fill, rect, border_radius=radius)
 
+    def _draw_reveal_glow(self, animation: FlyOutAnimation) -> None:
+        """Flash an arrow's origin with the newly revealed bead colour."""
+        strength = reveal_glow_strength(animation)
+        if strength <= 0.0:
+            return
+        color_name = self.game.board.color_grid[animation.row][animation.col]
+        if color_name is None:
+            return
+        color = COLOR_MAP.get(color_name, COLOR_MAP["leaf"])
+        bright_color = tuple(
+            round(channel + (255 - channel) * 0.45) for channel in color
+        )
+        rect = self.layout.cell_rect(animation.row, animation.col)
+        radius = max(6, self.layout.cell_size // 5)
+        glow = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(
+            glow,
+            (*bright_color, round(210 * strength)),
+            glow.get_rect(),
+            border_radius=radius,
+        )
+        pygame.draw.rect(
+            glow,
+            (255, 255, 255, round(125 * strength)),
+            glow.get_rect(),
+            width=max(1, self.layout.cell_size // 12),
+            border_radius=radius,
+        )
+        self.screen.blit(glow, rect.topleft)
+
     def _draw_animations(self) -> None:
         for animation in self.game.animations:
             rect = self.layout.cell_rect(animation.row, animation.col)
@@ -454,6 +491,8 @@ class UI:
                 is_error=is_error,
             )
             self._draw_arrow(rect, animation.direction, ERROR_ARROW if is_error else ARROW_COLOR)
+            if isinstance(animation, FlyOutAnimation):
+                self._draw_reveal_glow(animation)
 
     def _draw_tile(
         self,

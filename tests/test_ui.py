@@ -1,6 +1,7 @@
 import pygame
 import pytest
 
+from src.animation import FlyOutAnimation
 from src.board import Board
 from src.game import Game
 from src.levels import create_tree_board
@@ -18,6 +19,7 @@ from src.ui import (
     PAUSE_BUTTON_PATH,
     PAUSE_PANEL_PATH,
     RATING_STARS_PATH,
+    REVEAL_GLOW_DURATION,
     TOP_STATUS_BAR_PATH,
     WORK_MAT_RECT,
     WORK_MAT_COLOR,
@@ -27,6 +29,7 @@ from src.ui import (
     fit_surface,
     rating_star_points,
     remove_isolated_artifacts,
+    reveal_glow_strength,
 )
 from src.ui import UI
 
@@ -75,6 +78,30 @@ def test_arrow_cards_are_more_solid_but_hover_remains_more_transparent():
 )
 def test_format_elapsed_time(seconds, expected):
     assert format_elapsed_time(seconds) == expected
+
+
+def test_reveal_glow_strength_is_immediate_then_fades_to_zero():
+    animation = FlyOutAnimation(0, 0, "R")
+
+    assert reveal_glow_strength(animation) == 1.0
+    animation.update(REVEAL_GLOW_DURATION / 2)
+    assert reveal_glow_strength(animation) == pytest.approx(0.5)
+    animation.update(REVEAL_GLOW_DURATION / 2)
+    assert reveal_glow_strength(animation) == 0.0
+
+
+def test_successful_flyout_immediately_brightens_the_revealed_pixel():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R", "R"]], [["ball_red", "ball_red"]]))
+    ui = UI(screen, game)
+
+    game.click(0, 1)
+    ui.draw()
+
+    rect = ui.layout.cell_rect(0, 1)
+    pixel = screen.get_at((rect.left + 5, rect.centery))[:3]
+    assert sum(pixel) > sum(COLOR_MAP["ball_red"])
 
 
 def test_rating_star_points_create_a_five_point_polygon():

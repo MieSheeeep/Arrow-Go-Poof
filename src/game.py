@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from enum import Enum
 from collections.abc import Callable, Sequence
 
@@ -19,6 +20,15 @@ class GameState(Enum):
 
 
 Animation = FlyOutAnimation | CollisionAnimation
+
+
+@dataclass(frozen=True)
+class LevelSummary:
+    """The frozen runtime facts shown after a level has been cleared."""
+
+    elapsed_seconds: float
+    mistakes: int
+    stars: int
 
 
 class Game:
@@ -75,6 +85,8 @@ class Game:
     def _reset_runtime(self) -> None:
         self.lives = self.max_lives
         self.mistakes = 0
+        self.elapsed_seconds = 0.0
+        self.level_summary: LevelSummary | None = None
         self.animations: list[Animation] = []
         self.error_cells: set[tuple[int, int]] = set()
 
@@ -109,6 +121,11 @@ class Game:
             assert result.direction is not None
             self.animations.append(FlyOutAnimation(row, col, result.direction))
             if self.board.is_cleared():
+                self.level_summary = LevelSummary(
+                    self.elapsed_seconds,
+                    self.mistakes,
+                    0,
+                )
                 self.state = GameState.CLEARED
         elif result.reason == "blocked":
             assert result.direction is not None
@@ -125,6 +142,8 @@ class Game:
     def update(self, delta_time: float) -> None:
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("delta_time must be a finite non-negative number")
+        if self.state is GameState.PLAYING:
+            self.elapsed_seconds += delta_time
         remaining: list[Animation] = []
         for animation in self.animations:
             animation.update(delta_time)

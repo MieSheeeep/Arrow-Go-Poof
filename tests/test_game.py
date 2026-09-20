@@ -30,6 +30,30 @@ def test_game_starts_in_playing_with_three_lives():
     assert game.error_cells == set()
 
 
+def test_level_timer_advances_only_while_playing_and_freezes_on_clear():
+    game = Game(board_factory([["R"]]))
+
+    game.update(4.25)
+    game.click(0, 0)
+    game.update(8.0)
+
+    assert game.elapsed_seconds == pytest.approx(4.25)
+    assert game.level_summary is not None
+    assert game.level_summary.elapsed_seconds == pytest.approx(4.25)
+
+
+def test_timer_does_not_start_in_menu_and_restart_resets_it():
+    game = Game(board_factory([["R"]]), start_in_menu=True)
+
+    game.update(5.0)
+    game.start()
+    game.update(2.5)
+    game.restart()
+
+    assert game.elapsed_seconds == 0.0
+    assert game.level_summary is None
+
+
 def test_game_starts_cleared_when_factory_returns_empty_board():
     game = Game(board_factory([["."]]))
 

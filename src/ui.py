@@ -34,6 +34,11 @@ PAUSE_BUTTON_PATH = UI_ASSET_DIR / "pause-button.png"
 PAUSE_PANEL_PATH = UI_ASSET_DIR / "pause-panel.png"
 RATING_STARS_PATH = UI_ASSET_DIR / "rating-stars.png"
 TOP_STATUS_BAR_PATH = UI_ASSET_DIR / "top-status-bar.png"
+BUTTON_SPRITE_CROPS = {
+    "normal": pygame.Rect(50, 230, 675, 240),
+    "hover": pygame.Rect(750, 230, 675, 240),
+    "danger": pygame.Rect(1450, 230, 675, 240),
+}
 MENU_PANEL_COLOR = (75, 48, 31)
 # The dark desk mat in the supplied work-table illustration. Puzzle cells stay
 # inside it so the board feels like a bead-art project on the work surface.
@@ -223,17 +228,17 @@ class UI:
         self.button_skins = {
             "normal": _load_ui_asset(
                 BUTTON_STATES_PATH,
-                crop=pygame.Rect(50, 220, 650, 250),
+                crop=BUTTON_SPRITE_CROPS["normal"],
                 black_is_transparent=True,
             ),
             "hover": _load_ui_asset(
                 BUTTON_STATES_PATH,
-                crop=pygame.Rect(700, 220, 650, 250),
+                crop=BUTTON_SPRITE_CROPS["hover"],
                 black_is_transparent=True,
             ),
             "danger": _load_ui_asset(
                 BUTTON_STATES_PATH,
-                crop=pygame.Rect(1360, 220, 650, 250),
+                crop=BUTTON_SPRITE_CROPS["danger"],
                 black_is_transparent=True,
             ),
         }

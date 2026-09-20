@@ -15,6 +15,7 @@ from src.ui import (
     MENU_BACKGROUND_PATH,
     MENU_PANEL_COLOR,
     BUTTON_STATES_PATH,
+    BUTTON_SPRITE_CROPS,
     HEARTS_PATH,
     PAUSE_BUTTON_PATH,
     PAUSE_PANEL_PATH,
@@ -150,6 +151,14 @@ def test_supplied_pixel_ui_assets_are_packaged_with_the_game():
         PAUSE_PANEL_PATH,
     ):
         assert asset_path.is_file()
+
+
+def test_button_atlas_crops_include_the_full_hover_and_danger_caps():
+    assert BUTTON_SPRITE_CROPS == {
+        "normal": pygame.Rect(50, 230, 675, 240),
+        "hover": pygame.Rect(750, 230, 675, 240),
+        "danger": pygame.Rect(1450, 230, 675, 240),
+    }
 
 
 def test_loaded_ui_sprites_key_out_black_backgrounds_and_trim_their_bounds():

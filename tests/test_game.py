@@ -4,7 +4,7 @@ import pytest
 
 from src.animation import CollisionAnimation, FlyOutAnimation
 from src.board import Board
-from src.game import Game, GameState
+from src.game import Game, GameState, LevelSummary
 from src.levels import LEVEL_FACTORIES, LEVEL_NAMES
 
 
@@ -52,6 +52,22 @@ def test_timer_does_not_start_in_menu_and_restart_resets_it():
 
     assert game.elapsed_seconds == 0.0
     assert game.level_summary is None
+
+
+@pytest.mark.parametrize(
+    ("elapsed", "mistakes", "expected_stars"),
+    [(9.5, 0, 3), (15.0, 1, 2), (25.0, 0, 1), (9.5, 2, 1)],
+)
+def test_clear_summary_uses_time_and_mistake_star_rules(
+    elapsed, mistakes, expected_stars
+):
+    game = Game(board_factory([["R"]]), star_thresholds=((10.0, 20.0),))
+    game.elapsed_seconds = elapsed
+    game.mistakes = mistakes
+
+    game.click(0, 0)
+
+    assert game.level_summary == LevelSummary(elapsed, mistakes, expected_stars)
 
 
 def test_game_starts_cleared_when_factory_returns_empty_board():

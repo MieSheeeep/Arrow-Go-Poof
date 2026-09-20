@@ -13,6 +13,7 @@ from src.levels import (
     FLOWER_SOLUTION,
     LEVEL_FACTORIES,
     LEVEL_NAMES,
+    LEVEL_STAR_THRESHOLDS,
     SAMPLE_ARROW_GRID,
     SAMPLE_COLOR_GRID,
     SUN_ARROW_GRID,
@@ -125,6 +126,12 @@ def test_course_has_three_named_level_factories():
     assert len(LEVEL_FACTORIES) == 3
     assert len(LEVEL_NAMES) == 3
     assert all(factory().remaining_arrows() > 0 for factory in LEVEL_FACTORIES)
+
+
+def test_campaign_defines_one_increasing_star_threshold_pair_per_level():
+    assert LEVEL_STAR_THRESHOLDS == ((90.0, 150.0), (80.0, 130.0), (150.0, 240.0))
+    assert len(LEVEL_STAR_THRESHOLDS) == len(LEVEL_FACTORIES)
+    assert all(0 < three < two for three, two in LEVEL_STAR_THRESHOLDS)
 
 
 def test_runtime_campaign_uses_apple_ball_and_hello_kitty_in_order():

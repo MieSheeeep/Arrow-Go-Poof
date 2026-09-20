@@ -31,6 +31,20 @@ class LevelSummary:
     stars: int
 
 
+def _stars_for(
+    elapsed_seconds: float,
+    mistakes: int,
+    limits: tuple[float, float],
+) -> int:
+    """Return a 1--3 star rating for a completed level."""
+    three_star_limit, two_star_limit = limits
+    if elapsed_seconds <= three_star_limit and mistakes == 0:
+        return 3
+    if elapsed_seconds <= two_star_limit and mistakes <= 1:
+        return 2
+    return 1
+
+
 class Game:
     def __init__(
         self,
@@ -39,6 +53,7 @@ class Game:
         *,
         start_in_menu: bool = False,
         level_names: Sequence[str] | None = None,
+        star_thresholds: Sequence[tuple[float, float]] | None = None,
     ) -> None:
         if type(max_lives) is not int or max_lives <= 0:
             raise ValueError("max_lives must be a positive integer")
@@ -56,6 +71,22 @@ class Game:
             self.level_names = tuple(level_names)
             if len(self.level_names) != len(self.level_factories):
                 raise ValueError("level_names must match the number of level factories")
+        if star_thresholds is None:
+            self.star_thresholds = tuple((60.0, 120.0) for _ in self.level_factories)
+        else:
+            self.star_thresholds = tuple(star_thresholds)
+            if len(self.star_thresholds) != len(self.level_factories):
+                raise ValueError("star_thresholds must match the number of level factories")
+            for limits in self.star_thresholds:
+                if (
+                    not isinstance(limits, tuple)
+                    or len(limits) != 2
+                    or not all(math.isfinite(limit) and limit > 0 for limit in limits)
+                    or limits[0] >= limits[1]
+                ):
+                    raise ValueError(
+                        "each star threshold pair must be positive and increasing"
+                    )
         self.max_lives = max_lives
         self.level_index = 0
         self._start_in_menu = start_in_menu
@@ -124,7 +155,11 @@ class Game:
                 self.level_summary = LevelSummary(
                     self.elapsed_seconds,
                     self.mistakes,
-                    0,
+                    _stars_for(
+                        self.elapsed_seconds,
+                        self.mistakes,
+                        self.star_thresholds[self.level_index],
+                    ),
                 )
                 self.state = GameState.CLEARED
         elif result.reason == "blocked":

@@ -26,6 +26,13 @@ ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
 MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
+UI_ASSET_DIR = Path(__file__).resolve().parent.parent / "assets" / "ui"
+BUTTON_STATES_PATH = UI_ASSET_DIR / "button-states.png"
+HEARTS_PATH = UI_ASSET_DIR / "hearts.png"
+PAUSE_BUTTON_PATH = UI_ASSET_DIR / "pause-button.png"
+PAUSE_PANEL_PATH = UI_ASSET_DIR / "pause-panel.png"
+RATING_STARS_PATH = UI_ASSET_DIR / "rating-stars.png"
+TOP_STATUS_BAR_PATH = UI_ASSET_DIR / "top-status-bar.png"
 MENU_PANEL_COLOR = (75, 48, 31)
 # The dark desk mat in the supplied work-table illustration. Puzzle cells stay
 # inside it so the board feels like a bead-art project on the work surface.
@@ -54,6 +61,40 @@ def rating_star_points(
             )
         )
     return points
+
+
+def remove_isolated_artifacts(
+    surface: pygame.Surface, *, minimum_pixels: int
+) -> pygame.Surface:
+    """Erase tiny disconnected image fragments while preserving artwork colours."""
+    source_mask = pygame.mask.from_surface(surface)
+    kept_mask = pygame.mask.Mask(surface.get_size())
+    for component in source_mask.connected_components(minimum=minimum_pixels):
+        kept_mask.draw(component, (0, 0))
+    coverage = kept_mask.to_surface(
+        setcolor=(255, 255, 255, 255),
+        unsetcolor=(0, 0, 0, 0),
+    )
+    cleaned = surface.copy()
+    cleaned.blit(coverage, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return cleaned
+
+
+def _load_ui_asset(
+    path: Path,
+    *,
+    crop: pygame.Rect | None = None,
+    black_is_transparent: bool = False,
+) -> pygame.Surface:
+    """Load one supplied UI illustration, optionally crop and trim it."""
+    surface = pygame.image.load(path)
+    if crop is not None:
+        surface = surface.subsurface(crop).copy()
+    if black_is_transparent:
+        surface.set_colorkey((0, 0, 0))
+        surface = remove_isolated_artifacts(surface, minimum_pixels=200)
+    bounds = surface.get_bounding_rect()
+    return surface.subsurface(bounds).copy() if bounds.size != surface.get_size() else surface
 
 
 COLOR_MAP = {
@@ -139,6 +180,43 @@ class UI:
             # onto headless test surfaces before a display mode exists.
             pygame.image.load(MENU_BACKGROUND_PATH), WINDOW_SIZE
         )
+        self.top_status_bar = pygame.transform.scale(
+            _load_ui_asset(
+                TOP_STATUS_BAR_PATH,
+                crop=pygame.Rect(35, 210, 2105, 445),
+                black_is_transparent=True,
+            ),
+            (1200, 104),
+        )
+        self.button_skins = {
+            "normal": _load_ui_asset(
+                BUTTON_STATES_PATH, crop=pygame.Rect(50, 220, 650, 250)
+            ),
+            "hover": _load_ui_asset(
+                BUTTON_STATES_PATH, crop=pygame.Rect(700, 220, 650, 250)
+            ),
+            "danger": _load_ui_asset(
+                BUTTON_STATES_PATH, crop=pygame.Rect(1360, 220, 650, 250)
+            ),
+        }
+        self.heart_full = pygame.transform.scale(
+            _load_ui_asset(HEARTS_PATH, crop=pygame.Rect(250, 40, 750, 650)),
+            (34, 30),
+        )
+        self.heart_empty = pygame.transform.scale(
+            _load_ui_asset(HEARTS_PATH, crop=pygame.Rect(1110, 40, 800, 650)),
+            (34, 30),
+        )
+        self.star_full = pygame.transform.scale(
+            _load_ui_asset(RATING_STARS_PATH, crop=pygame.Rect(390, 60, 570, 550)),
+            (34, 34),
+        )
+        self.star_empty = pygame.transform.scale(
+            _load_ui_asset(RATING_STARS_PATH, crop=pygame.Rect(1120, 60, 620, 550)),
+            (34, 34),
+        )
+        self.pause_icon = pygame.transform.scale(_load_ui_asset(PAUSE_BUTTON_PATH), (58, 58))
+        self.pause_panel = pygame.transform.scale(_load_ui_asset(PAUSE_PANEL_PATH), (600, 554))
         self._refresh_layout()
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
@@ -163,6 +241,18 @@ class UI:
 
     def menu_rect(self) -> pygame.Rect:
         return pygame.Rect(230, 34, 112, 38)
+
+    def pause_rect(self) -> pygame.Rect:
+        return pygame.Rect(1035, 23, 62, 62)
+
+    def pause_resume_rect(self) -> pygame.Rect:
+        return pygame.Rect(445, 350, 310, 54)
+
+    def pause_restart_rect(self) -> pygame.Rect:
+        return pygame.Rect(445, 430, 310, 54)
+
+    def pause_menu_rect(self) -> pygame.Rect:
+        return pygame.Rect(445, 510, 310, 54)
 
     def result_primary_rect(self) -> pygame.Rect:
         return pygame.Rect(490, 505, 220, 48)
@@ -193,6 +283,8 @@ class UI:
         self._draw_hud()
         if self.game.state in {GameState.CLEARED, GameState.FAILED}:
             self._draw_result_panel()
+        elif self.game.state is GameState.PAUSED:
+            self._draw_pause_panel()
 
     def _draw_start_panel(self) -> None:
         panel = pygame.Rect(150, 92, 900, 228)
@@ -222,17 +314,14 @@ class UI:
         )
         self.screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.top + 126)))
         details = self.small_font.render(
-            f"{self.game.level_count} pixel puzzles  |  {self.game.max_lives} mistakes per level",
+            f"{self.game.level_count} pixel puzzles  |  {self.game.max_lives} lives per level",
             True,
             (240, 245, 250),
         )
         self.screen.blit(details, details.get_rect(center=(panel.centerx, panel.top + 166)))
 
         button = self.start_rect()
-        pygame.draw.rect(self.screen, (105, 181, 78), button, border_radius=8)
-        pygame.draw.rect(self.screen, (168, 224, 131), button, 2, border_radius=8)
-        label = self.small_font.render("START GAME", True, (255, 255, 255))
-        self.screen.blit(label, label.get_rect(center=button.center))
+        self._draw_action_button(button, "START GAME")
 
     def _draw_menu_background(self) -> None:
         """Draw the generated work desk behind the one-button main menu."""
@@ -426,23 +515,23 @@ class UI:
             pygame.draw.polygon(self.screen, color, arm)
 
     def _draw_hud(self) -> None:
-        pygame.draw.rect(self.screen, HUD_COLOR, (220, 18, 760, 76), border_radius=12)
+        self.screen.blit(self.top_status_bar, (0, 0))
         level_text = self.small_font.render(
-            f"LEVEL {self.game.level_number:02d}/{self.game.level_count}  {self.game.level_name}",
+            f"LEVEL {self.game.level_number:02d}/{self.game.level_count}",
             True,
             (250, 230, 133),
         )
-        stats_text = self.small_font.render(
-            f"TIME {format_elapsed_time(self.game.elapsed_seconds)}   "
-            f"LIVES {self.game.lives}   MISTAKES {self.game.mistakes}   "
-            f"ARROWS {self.game.board.remaining_arrows()}",
+        time_text = self.small_font.render(
+            f"TIME {format_elapsed_time(self.game.elapsed_seconds)}",
             True,
             (240, 245, 250),
         )
-        self.screen.blit(level_text, (360, 28))
-        self.screen.blit(stats_text, (360, 57))
-        self._draw_action_button(self.menu_rect(), "MENU", color=(109, 132, 151))
-        self._draw_action_button(self.restart_rect(), "RESTART")
+        self.screen.blit(level_text, (72, 46))
+        self.screen.blit(time_text, (470, 46))
+        for index in range(3):
+            heart = self.heart_full if index < self.game.lives else self.heart_empty
+            self.screen.blit(heart, (770 + index * 54, 37))
+        self.screen.blit(self.pause_icon, self.pause_rect().topleft)
 
     def _draw_result_panel(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
@@ -469,29 +558,16 @@ class UI:
             True,
             (240, 245, 250),
         )
-        mistakes_text = self.small_font.render(
-            f"Mistakes: {self.game.mistakes}", True, (240, 245, 250)
-        )
         self.screen.blit(time_text, time_text.get_rect(center=(panel.centerx, panel.top + 152)))
-        self.screen.blit(
-            mistakes_text,
-            mistakes_text.get_rect(center=(panel.centerx, panel.top + 188)),
-        )
         if self.game.state is GameState.CLEARED and self.game.level_summary is not None:
             stars_label = self.font.render("Stars:", True, (250, 230, 133))
             self.screen.blit(
                 stars_label,
-                stars_label.get_rect(center=(panel.centerx - 62, panel.top + 238)),
+                stars_label.get_rect(center=(panel.centerx - 62, panel.top + 204)),
             )
             for index in range(3):
-                points = rating_star_points(
-                    (panel.centerx + index * 38 - 2, panel.top + 238),
-                    outer_radius=15,
-                    inner_radius=7,
-                )
-                color = (250, 230, 133) if index < self.game.level_summary.stars else (60, 84, 110)
-                pygame.draw.polygon(self.screen, color, points)
-                pygame.draw.polygon(self.screen, (250, 230, 133), points, width=2)
+                star = self.star_full if index < self.game.level_summary.stars else self.star_empty
+                self.screen.blit(star, (panel.centerx - 15 + index * 38, panel.top + 187))
 
         if self.game.state is GameState.FAILED:
             button_text = "RESTART LEVEL"
@@ -499,21 +575,37 @@ class UI:
             button_text = "NEXT LEVEL"
         else:
             button_text = "RESTART GAME"
-        self._draw_action_button(self.result_primary_rect(), button_text)
+        self._draw_action_button(
+            self.result_primary_rect(),
+            button_text,
+            style="danger" if self.game.state is GameState.FAILED else "normal",
+        )
         if self.game.state is GameState.CLEARED:
-            self._draw_action_button(
-                self.result_retry_rect(), "RETRY LEVEL", color=(109, 132, 151)
-            )
-        self._draw_action_button(self.result_menu_rect(), "MAIN MENU", color=(109, 132, 151))
+            self._draw_action_button(self.result_retry_rect(), "RETRY LEVEL")
+        self._draw_action_button(self.result_menu_rect(), "MAIN MENU")
+
+    def _draw_pause_panel(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((8, 15, 26, 156))
+        self.screen.blit(overlay, (0, 0))
+        panel_rect = pygame.Rect(300, 123, 600, 554)
+        self.screen.blit(self.pause_panel, panel_rect.topleft)
+        title = self.title_font.render("PAUSED", True, (250, 230, 133))
+        self.screen.blit(title, title.get_rect(center=(panel_rect.centerx, panel_rect.top + 105)))
+        self._draw_action_button(self.pause_resume_rect(), "CONTINUE")
+        self._draw_action_button(self.pause_restart_rect(), "RESTART LEVEL")
+        self._draw_action_button(self.pause_menu_rect(), "MAIN MENU")
 
     def _draw_action_button(
         self,
         rect: pygame.Rect,
         label: str,
         *,
-        color: tuple[int, int, int] = (105, 181, 78),
+        style: str = "normal",
     ) -> None:
-        pygame.draw.rect(self.screen, color, rect, border_radius=8)
-        pygame.draw.rect(self.screen, (220, 238, 224), rect, 2, border_radius=8)
+        mouse_position = pygame.mouse.get_pos() if pygame.display.get_init() else (-1, -1)
+        skin_name = "hover" if rect.collidepoint(mouse_position) else style
+        skin = pygame.transform.scale(self.button_skins[skin_name], rect.size)
+        self.screen.blit(skin, rect.topleft)
         surface = self.small_font.render(label, True, (255, 255, 255))
         self.screen.blit(surface, surface.get_rect(center=rect.center))

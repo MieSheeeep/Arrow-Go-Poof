@@ -9,6 +9,7 @@
 ![月亮 Hello Kitty 关卡](docs/assets/runtime-moon-kitty.png)
 ![通关结果界面](docs/assets/runtime-result.png)
 ![失败界面](docs/assets/runtime-failed.png)
+![暂停菜单](docs/assets/runtime-paused.png)
 
 ## 功能
 
@@ -17,12 +18,12 @@
 - 同行/同列路径检测和边界判断；
 - 成功箭头飞出窗口的动画；
 - 阻挡箭头撞击、变红、回退并保留错误标记；
-- 三次失误机会，HUD 显示生命值、失误次数和剩余箭头；
+- 三次生命机会以三颗像素心显示；
 - 每关独立计时；开始页不计时，通关或失败后时间冻结，重开时清零；
 - 根据关卡时间与失误次数结算 1～3 星：零失误并在三星时限内为 3 星；一次失误内且在二星时限内为 2 星；其余通关为 1 星；
 - 3 个可以正常通关的关卡：16×16 ENCHANTED APPLE、16×16 BEAD BALL、18×17 MOON KITTY；
 - 三个拼豆关卡都使用固定的像素画颜色掩码和已冻结的方向布局；布局在设计阶段由固定种子工具生成并验证，运行时不会随机变化；
-- 对局 HUD 提供 `MENU` 与 `RESTART`；通关页提供下一关、重试当前关和主菜单，失败页提供重开当前关和主菜单；
+- 顶部状态栏显示关卡、时间、三颗生命和暂停键；暂停菜单提供继续、重开本关和返回主菜单；通关页提供下一关、重试当前关和主菜单，失败页提供重开当前关和主菜单；
 - 无外部商业游戏代码、美术、音效或关卡资源。
 
 开始界面和游戏界面共用提交者提供的工作桌图片资源，文件位于 `assets/menu-background.png`；箭头棋盘会始终居中放在桌垫内。箭头使用 Pygame 绘制的居中回旋镖形方向标记，半透明格可透出底层关卡颜色。三关分别根据提交者提供的附魔金苹果、精灵球、月亮 Hello Kitty `.px` 拼豆工程图案制作成固定网格；Hello Kitty 图案在设计阶段等比例压缩为适合游戏桌垫的 18×17 网格。
@@ -45,7 +46,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-窗口固定为 1200×800。点击 `START GAME` 进入第一关；鼠标左键点击箭头；游戏中可点击 `RESTART` 重开本关或点击 `MENU` 返回主界面；通关后可点击 `NEXT LEVEL`、`RETRY LEVEL` 或 `MAIN MENU`；失败后可点击 `RESTART LEVEL` 或 `MAIN MENU`；最终通关后可点击 `RESTART GAME`。
+窗口固定为 1200×800。点击 `START GAME` 进入第一关；鼠标左键点击箭头；游戏中点击右上角暂停键，可继续游戏、重开本关或返回主界面；通关后可点击 `NEXT LEVEL`、`RETRY LEVEL` 或 `MAIN MENU`；失败后可点击 `RESTART LEVEL` 或 `MAIN MENU`；最终通关后可点击 `RESTART GAME`。
 
 ## 测试
 
@@ -54,7 +55,7 @@ python -m pytest -v
 python -m compileall -q main.py src tests
 ```
 
-当前自动化测试（132 项）覆盖 Board 规则、四方向路径、三关可通关顺序、固定种子布局、动画阶段、生命值、计时与星级、开始/通关/失败/重开、菜单导航、鼠标事件路由和 UI 布局。
+自动化测试覆盖 Board 规则、四方向路径、三关可通关顺序、固定种子布局、动画阶段、生命值、计时与星级、开始/通关/失败/重开、暂停菜单导航、鼠标事件路由和 UI 布局。
 
 ## 项目文档
 

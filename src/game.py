@@ -150,6 +150,20 @@ class Game:
         self._reset_runtime()
         self.state = GameState.START
 
+    def pause(self) -> bool:
+        """Freeze a live level without changing its board or timer."""
+        if self.state is not GameState.PLAYING:
+            return False
+        self.state = GameState.PAUSED
+        return True
+
+    def resume(self) -> bool:
+        """Continue a level that was paused by the player."""
+        if self.state is not GameState.PAUSED:
+            return False
+        self.state = GameState.PLAYING
+        return True
+
     def click(self, row: int, col: int) -> MoveResult | None:
         if self.state is not GameState.PLAYING:
             return None
@@ -184,6 +198,8 @@ class Game:
     def update(self, delta_time: float) -> None:
         if not math.isfinite(delta_time) or delta_time < 0:
             raise ValueError("delta_time must be a finite non-negative number")
+        if self.state is GameState.PAUSED:
+            return
         if self.state is GameState.PLAYING:
             self.elapsed_seconds += delta_time
         remaining: list[Animation] = []

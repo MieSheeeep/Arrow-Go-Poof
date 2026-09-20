@@ -54,6 +54,21 @@ def test_timer_does_not_start_in_menu_and_restart_resets_it():
     assert game.level_summary is None
 
 
+def test_pause_freezes_time_and_resume_continues_the_same_level():
+    game = Game(board_factory([["R", "U"]]))
+    game.update(3.0)
+
+    assert game.pause() is True
+    game.update(5.0)
+    assert game.state is GameState.PAUSED
+    assert game.elapsed_seconds == pytest.approx(3.0)
+
+    assert game.resume() is True
+    game.update(1.5)
+    assert game.state is GameState.PLAYING
+    assert game.elapsed_seconds == pytest.approx(4.5)
+
+
 @pytest.mark.parametrize(
     ("elapsed", "mistakes", "expected_stars"),
     [(9.5, 0, 3), (15.0, 1, 2), (25.0, 0, 1), (9.5, 2, 1)],

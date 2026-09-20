@@ -31,14 +31,19 @@ def process_event(event: pygame.event.Event, game: Game, ui: UI) -> bool:
         elif ui.result_menu_rect().collidepoint(event.pos):
             game.return_to_menu()
     elif game.state is GameState.PLAYING:
-        if ui.restart_rect().collidepoint(event.pos):
-            game.restart()
-        elif ui.menu_rect().collidepoint(event.pos):
-            game.return_to_menu()
+        if ui.pause_rect().collidepoint(event.pos):
+            game.pause()
         else:
             cell = ui.cell_at(event.pos)
             if cell is not None:
                 game.click(*cell)
+    elif game.state is GameState.PAUSED:
+        if ui.pause_resume_rect().collidepoint(event.pos):
+            game.resume()
+        elif ui.pause_restart_rect().collidepoint(event.pos):
+            game.restart()
+        elif ui.pause_menu_rect().collidepoint(event.pos):
+            game.return_to_menu()
     return True
 
 

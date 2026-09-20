@@ -13,12 +13,19 @@ from src.ui import (
     HOVERED_ARROW_CARD_ALPHA,
     MENU_BACKGROUND_PATH,
     MENU_PANEL_COLOR,
+    BUTTON_STATES_PATH,
+    HEARTS_PATH,
+    PAUSE_BUTTON_PATH,
+    PAUSE_PANEL_PATH,
+    RATING_STARS_PATH,
+    TOP_STATUS_BAR_PATH,
     WORK_MAT_RECT,
     WORK_MAT_COLOR,
     GridLayout,
     WINDOW_SIZE,
     format_elapsed_time,
     rating_star_points,
+    remove_isolated_artifacts,
 )
 from src.ui import UI
 
@@ -77,6 +84,17 @@ def test_rating_star_points_create_a_five_point_polygon():
     assert points[1] != points[0]
 
 
+def test_remove_isolated_artifacts_keeps_the_main_component_only():
+    surface = pygame.Surface((40, 20), pygame.SRCALPHA)
+    pygame.draw.rect(surface, (255, 255, 255, 255), (2, 2, 12, 12))
+    surface.set_at((30, 10), (255, 220, 104, 255))
+
+    cleaned = remove_isolated_artifacts(surface, minimum_pixels=16)
+
+    assert cleaned.get_at((5, 5)).a == 255
+    assert cleaned.get_at((30, 10)).a == 0
+
+
 def test_gameplay_and_result_controls_have_distinct_hit_areas():
     pygame.font.init()
     ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
@@ -92,6 +110,32 @@ def test_gameplay_and_result_controls_have_distinct_hit_areas():
     assert not ui.restart_rect().colliderect(ui.menu_rect())
     assert not ui.result_primary_rect().colliderect(ui.result_retry_rect())
     assert not ui.result_retry_rect().colliderect(ui.result_menu_rect())
+
+
+def test_supplied_pixel_ui_assets_are_packaged_with_the_game():
+    for asset_path in (
+        TOP_STATUS_BAR_PATH,
+        BUTTON_STATES_PATH,
+        RATING_STARS_PATH,
+        HEARTS_PATH,
+        PAUSE_BUTTON_PATH,
+        PAUSE_PANEL_PATH,
+    ):
+        assert asset_path.is_file()
+
+
+def test_pause_controls_are_separate_and_render_for_a_paused_game():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(create_tree_board)
+    ui = UI(screen, game)
+    game.pause()
+
+    ui.draw()
+
+    assert not ui.pause_resume_rect().colliderect(ui.pause_restart_rect())
+    assert not ui.pause_restart_rect().colliderect(ui.pause_menu_rect())
+    assert ui.pause_rect().collidepoint(ui.pause_rect().center)
 
 
 def test_ui_exposes_start_and_result_action_buttons():
@@ -112,7 +156,7 @@ def test_start_screen_draws_a_distinct_title_panel_and_start_button():
     UI(screen, game).draw()
 
     assert screen.get_at((195, 130))[:3] == MENU_PANEL_COLOR
-    assert screen.get_at((600, 515))[:3] == (105, 181, 78)
+    assert screen.get_at((600, 515))[:3] != MENU_PANEL_COLOR
     assert screen.get_at((80, 80))[:3] != BACKGROUND
 
 

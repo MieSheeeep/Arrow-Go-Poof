@@ -198,3 +198,20 @@ def test_last_level_reports_no_next_level_and_campaign_restart_returns_to_first(
     game.restart_campaign()
     assert game.level_index == 0
     assert game.state is GameState.PLAYING
+
+
+def test_return_to_menu_resets_the_campaign_to_fresh_first_level():
+    game = Game(LEVEL_FACTORIES, start_in_menu=True, level_names=LEVEL_NAMES)
+    game.start()
+    game.level_index = 2
+    game.restart()
+    game.update(4.0)
+    game.animations.append(FlyOutAnimation(0, 0, "R"))
+
+    game.return_to_menu()
+
+    assert game.state is GameState.START
+    assert game.level_index == 0
+    assert game.lives == 3
+    assert game.elapsed_seconds == 0.0
+    assert game.animations == []

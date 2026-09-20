@@ -19,8 +19,17 @@ class StubUI:
     def restart_rect(self):
         return pygame.Rect(0, 0, 100, 40)
 
-    def result_action_rect(self):
-        return self.restart_rect()
+    def menu_rect(self):
+        return pygame.Rect(110, 0, 100, 40)
+
+    def result_primary_rect(self):
+        return pygame.Rect(220, 0, 100, 40)
+
+    def result_retry_rect(self):
+        return pygame.Rect(330, 0, 100, 40)
+
+    def result_menu_rect(self):
+        return pygame.Rect(440, 0, 100, 40)
 
     def start_rect(self):
         return self.restart_rect()
@@ -54,6 +63,29 @@ def test_playing_left_click_routes_through_ui_to_game(monkeypatch):
     assert ui.cell_at_calls == 1
 
 
+def test_playing_restart_button_resets_level_without_routing_to_board(monkeypatch):
+    game = Game(lambda: Board([["R", "U"]], [["leaf", "leaf"]]))
+    ui = StubUI()
+    game.click(0, 0)
+    monkeypatch.setattr(game, "click", lambda *_: pytest.fail("restart routed to board"))
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (10, 10)})
+
+    assert process_event(event, game, ui) is True
+    assert game.board.get_cell(0, 0) == "R"
+    assert game.lives == 3
+    assert ui.cell_at_calls == 0
+
+
+def test_playing_menu_button_returns_to_start_state_without_routing_to_board(monkeypatch):
+    game, ui = make_game(), StubUI()
+    monkeypatch.setattr(game, "click", lambda *_: pytest.fail("menu routed to board"))
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (120, 10)})
+
+    assert process_event(event, game, ui) is True
+    assert game.state is GameState.START
+    assert ui.cell_at_calls == 0
+
+
 def test_start_button_enters_playing_state():
     game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
     ui = StubUI()
@@ -72,8 +104,18 @@ def test_cleared_action_button_advances_to_next_level():
     )
     game.state = GameState.CLEARED
     ui = StubUI()
-    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (10, 10)})
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (230, 10)})
 
     assert process_event(event, game, ui) is True
     assert game.level_index == 1
     assert game.state is GameState.PLAYING
+
+
+def test_clear_retry_button_restarts_current_level():
+    game, ui = make_game(), StubUI()
+    game.state = GameState.CLEARED
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (340, 10)})
+
+    assert process_event(event, game, ui) is True
+    assert game.state is GameState.PLAYING
+    assert game.board.get_cell(0, 0) == "R"

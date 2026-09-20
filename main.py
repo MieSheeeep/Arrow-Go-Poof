@@ -16,17 +16,29 @@ def process_event(event: pygame.event.Event, game: Game, ui: UI) -> bool:
         if ui.start_rect().collidepoint(event.pos):
             game.start()
     elif game.state in {GameState.CLEARED, GameState.FAILED}:
-        if ui.result_action_rect().collidepoint(event.pos):
+        if ui.result_primary_rect().collidepoint(event.pos):
             if game.state is GameState.FAILED:
                 game.restart()
             elif game.has_next_level:
                 game.next_level()
             else:
                 game.restart_campaign()
+        elif (
+            game.state is GameState.CLEARED
+            and ui.result_retry_rect().collidepoint(event.pos)
+        ):
+            game.restart()
+        elif ui.result_menu_rect().collidepoint(event.pos):
+            game.return_to_menu()
     elif game.state is GameState.PLAYING:
-        cell = ui.cell_at(event.pos)
-        if cell is not None:
-            game.click(*cell)
+        if ui.restart_rect().collidepoint(event.pos):
+            game.restart()
+        elif ui.menu_rect().collidepoint(event.pos):
+            game.return_to_menu()
+        else:
+            cell = ui.cell_at(event.pos)
+            if cell is not None:
+                game.click(*cell)
     return True
 
 

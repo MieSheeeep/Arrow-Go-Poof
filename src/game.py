@@ -143,6 +143,13 @@ class Game:
         self.level_index = 0
         self.restart()
 
+    def return_to_menu(self) -> None:
+        """Discard the current attempt and show a fresh campaign menu."""
+        self.level_index = 0
+        self._load_level()
+        self._reset_runtime()
+        self.state = GameState.START
+
     def click(self, row: int, col: int) -> MoveResult | None:
         if self.state is not GameState.PLAYING:
             return None

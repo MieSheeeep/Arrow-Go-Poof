@@ -18,6 +18,7 @@ from src.ui import (
     GridLayout,
     WINDOW_SIZE,
     format_elapsed_time,
+    rating_star_points,
 )
 from src.ui import UI
 
@@ -66,6 +67,14 @@ def test_arrow_cards_are_more_solid_but_hover_remains_more_transparent():
 )
 def test_format_elapsed_time(seconds, expected):
     assert format_elapsed_time(seconds) == expected
+
+
+def test_rating_star_points_create_a_five_point_polygon():
+    points = rating_star_points((20, 20), outer_radius=10, inner_radius=4)
+
+    assert len(points) == 10
+    assert points[0] == (20, 10)
+    assert points[1] != points[0]
 
 
 def test_gameplay_and_result_controls_have_distinct_hit_areas():

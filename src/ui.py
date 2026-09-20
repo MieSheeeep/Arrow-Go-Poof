@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pygame
@@ -35,6 +36,24 @@ def format_elapsed_time(seconds: float) -> str:
     """Format a non-negative level duration as MM:SS.hh."""
     minutes, remaining = divmod(seconds, 60.0)
     return f"{int(minutes):02d}:{remaining:05.2f}"
+
+
+def rating_star_points(
+    center: tuple[int, int], *, outer_radius: int, inner_radius: int
+) -> list[tuple[int, int]]:
+    """Return the ten alternating vertices of a font-independent star."""
+    center_x, center_y = center
+    points = []
+    for index in range(10):
+        radius = outer_radius if index % 2 == 0 else inner_radius
+        angle = -math.pi / 2 + index * math.pi / 5
+        points.append(
+            (
+                round(center_x + math.cos(angle) * radius),
+                round(center_y + math.sin(angle) * radius),
+            )
+        )
+    return points
 
 
 COLOR_MAP = {
@@ -459,14 +478,20 @@ class UI:
             mistakes_text.get_rect(center=(panel.centerx, panel.top + 188)),
         )
         if self.game.state is GameState.CLEARED and self.game.level_summary is not None:
-            stars = "★" * self.game.level_summary.stars + "☆" * (
-                3 - self.game.level_summary.stars
-            )
-            stars_text = self.font.render(f"Stars: {stars}", True, (250, 230, 133))
+            stars_label = self.font.render("Stars:", True, (250, 230, 133))
             self.screen.blit(
-                stars_text,
-                stars_text.get_rect(center=(panel.centerx, panel.top + 238)),
+                stars_label,
+                stars_label.get_rect(center=(panel.centerx - 62, panel.top + 238)),
             )
+            for index in range(3):
+                points = rating_star_points(
+                    (panel.centerx + index * 38 - 2, panel.top + 238),
+                    outer_radius=15,
+                    inner_radius=7,
+                )
+                color = (250, 230, 133) if index < self.game.level_summary.stars else (60, 84, 110)
+                pygame.draw.polygon(self.screen, color, points)
+                pygame.draw.polygon(self.screen, (250, 230, 133), points, width=2)
 
         if self.game.state is GameState.FAILED:
             button_text = "RESTART LEVEL"

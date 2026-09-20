@@ -85,6 +85,7 @@ def _load_ui_asset(
     *,
     crop: pygame.Rect | None = None,
     black_is_transparent: bool = False,
+    remove_artifacts: bool = False,
 ) -> pygame.Surface:
     """Load one supplied UI illustration, optionally crop and trim it."""
     surface = pygame.image.load(path)
@@ -92,9 +93,32 @@ def _load_ui_asset(
         surface = surface.subsurface(crop).copy()
     if black_is_transparent:
         surface.set_colorkey((0, 0, 0))
-        surface = remove_isolated_artifacts(surface, minimum_pixels=200)
+        if remove_artifacts:
+            surface = remove_isolated_artifacts(surface, minimum_pixels=200)
     bounds = surface.get_bounding_rect()
-    return surface.subsurface(bounds).copy() if bounds.size != surface.get_size() else surface
+    if bounds.size != surface.get_size():
+        surface = surface.subsurface(bounds).copy()
+        if black_is_transparent:
+            surface.set_colorkey((0, 0, 0))
+    return surface
+
+
+def fit_surface(
+    surface: pygame.Surface, target: pygame.Rect
+) -> tuple[pygame.Surface, pygame.Rect]:
+    """Fit a pixel-art surface inside a rectangle without stretching it."""
+    if surface.get_width() <= 0 or surface.get_height() <= 0:
+        raise ValueError("surface must have positive dimensions")
+    scale = min(
+        target.width / surface.get_width(),
+        target.height / surface.get_height(),
+    )
+    size = (
+        max(1, round(surface.get_width() * scale)),
+        max(1, round(surface.get_height() * scale)),
+    )
+    fitted = pygame.transform.scale(surface, size)
+    return fitted, fitted.get_rect(center=target.center)
 
 
 COLOR_MAP = {
@@ -185,38 +209,65 @@ class UI:
                 TOP_STATUS_BAR_PATH,
                 crop=pygame.Rect(35, 210, 2105, 445),
                 black_is_transparent=True,
+                remove_artifacts=True,
             ),
             (1200, 104),
         )
         self.button_skins = {
             "normal": _load_ui_asset(
-                BUTTON_STATES_PATH, crop=pygame.Rect(50, 220, 650, 250)
+                BUTTON_STATES_PATH,
+                crop=pygame.Rect(50, 220, 650, 250),
+                black_is_transparent=True,
             ),
             "hover": _load_ui_asset(
-                BUTTON_STATES_PATH, crop=pygame.Rect(700, 220, 650, 250)
+                BUTTON_STATES_PATH,
+                crop=pygame.Rect(700, 220, 650, 250),
+                black_is_transparent=True,
             ),
             "danger": _load_ui_asset(
-                BUTTON_STATES_PATH, crop=pygame.Rect(1360, 220, 650, 250)
+                BUTTON_STATES_PATH,
+                crop=pygame.Rect(1360, 220, 650, 250),
+                black_is_transparent=True,
             ),
         }
         self.heart_full = pygame.transform.scale(
-            _load_ui_asset(HEARTS_PATH, crop=pygame.Rect(250, 40, 750, 650)),
+            _load_ui_asset(
+                HEARTS_PATH,
+                crop=pygame.Rect(250, 40, 750, 650),
+                black_is_transparent=True,
+            ),
             (34, 30),
         )
         self.heart_empty = pygame.transform.scale(
-            _load_ui_asset(HEARTS_PATH, crop=pygame.Rect(1110, 40, 800, 650)),
+            _load_ui_asset(
+                HEARTS_PATH,
+                crop=pygame.Rect(1110, 40, 800, 650),
+                black_is_transparent=True,
+            ),
             (34, 30),
         )
         self.star_full = pygame.transform.scale(
-            _load_ui_asset(RATING_STARS_PATH, crop=pygame.Rect(390, 60, 570, 550)),
+            _load_ui_asset(
+                RATING_STARS_PATH,
+                crop=pygame.Rect(390, 60, 570, 550),
+                black_is_transparent=True,
+            ),
             (34, 34),
         )
         self.star_empty = pygame.transform.scale(
-            _load_ui_asset(RATING_STARS_PATH, crop=pygame.Rect(1120, 60, 620, 550)),
+            _load_ui_asset(
+                RATING_STARS_PATH,
+                crop=pygame.Rect(1120, 60, 620, 550),
+                black_is_transparent=True,
+            ),
             (34, 34),
         )
-        self.pause_icon = pygame.transform.scale(_load_ui_asset(PAUSE_BUTTON_PATH), (58, 58))
-        self.pause_panel = pygame.transform.scale(_load_ui_asset(PAUSE_PANEL_PATH), (600, 554))
+        self.pause_icon = pygame.transform.scale(
+            _load_ui_asset(PAUSE_BUTTON_PATH, black_is_transparent=True), (58, 58)
+        )
+        self.pause_panel = pygame.transform.scale(
+            _load_ui_asset(PAUSE_PANEL_PATH, black_is_transparent=True), (600, 554)
+        )
         self._refresh_layout()
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
@@ -246,22 +297,22 @@ class UI:
         return pygame.Rect(1035, 23, 62, 62)
 
     def pause_resume_rect(self) -> pygame.Rect:
-        return pygame.Rect(445, 350, 310, 54)
+        return pygame.Rect(445, 292, 310, 100)
 
     def pause_restart_rect(self) -> pygame.Rect:
-        return pygame.Rect(445, 430, 310, 54)
+        return pygame.Rect(445, 408, 310, 100)
 
     def pause_menu_rect(self) -> pygame.Rect:
-        return pygame.Rect(445, 510, 310, 54)
+        return pygame.Rect(445, 524, 310, 100)
 
     def result_primary_rect(self) -> pygame.Rect:
-        return pygame.Rect(490, 505, 220, 48)
+        return pygame.Rect(450, 455, 300, 70)
 
     def result_retry_rect(self) -> pygame.Rect:
-        return pygame.Rect(490, 561, 220, 42)
+        return pygame.Rect(450, 535, 300, 60)
 
     def result_menu_rect(self) -> pygame.Rect:
-        return pygame.Rect(490, 611, 220, 42)
+        return pygame.Rect(450, 605, 300, 60)
 
     def start_rect(self) -> pygame.Rect:
         rect = pygame.Rect(0, 0, 260, 64)
@@ -605,7 +656,7 @@ class UI:
     ) -> None:
         mouse_position = pygame.mouse.get_pos() if pygame.display.get_init() else (-1, -1)
         skin_name = "hover" if rect.collidepoint(mouse_position) else style
-        skin = pygame.transform.scale(self.button_skins[skin_name], rect.size)
-        self.screen.blit(skin, rect.topleft)
+        skin, skin_rect = fit_surface(self.button_skins[skin_name], rect)
+        self.screen.blit(skin, skin_rect)
         surface = self.small_font.render(label, True, (255, 255, 255))
         self.screen.blit(surface, surface.get_rect(center=rect.center))

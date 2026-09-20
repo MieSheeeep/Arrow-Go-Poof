@@ -24,6 +24,7 @@ from src.ui import (
     GridLayout,
     WINDOW_SIZE,
     format_elapsed_time,
+    fit_surface,
     rating_star_points,
     remove_isolated_artifacts,
 )
@@ -124,6 +125,38 @@ def test_supplied_pixel_ui_assets_are_packaged_with_the_game():
         assert asset_path.is_file()
 
 
+def test_loaded_ui_sprites_key_out_black_backgrounds_and_trim_their_bounds():
+    pygame.font.init()
+    ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
+
+    sprites = [
+        *ui.button_skins.values(),
+        ui.heart_full,
+        ui.heart_empty,
+        ui.star_full,
+        ui.star_empty,
+        ui.pause_icon,
+        ui.pause_panel,
+    ]
+
+    for sprite in sprites:
+        assert sprite.get_colorkey()[:3] == (0, 0, 0)
+        bounds = sprite.get_bounding_rect()
+        assert bounds.width >= sprite.get_width() - 2
+        assert bounds.height >= sprite.get_height() - 2
+
+
+def test_fit_surface_preserves_aspect_ratio_and_centers_the_sprite():
+    source = pygame.Surface((300, 100), pygame.SRCALPHA)
+    target = pygame.Rect(100, 200, 310, 54)
+
+    fitted, rect = fit_surface(source, target)
+
+    assert fitted.get_size() == (162, 54)
+    assert rect.center == target.center
+    assert rect.size == fitted.get_size()
+
+
 def test_pause_controls_are_separate_and_render_for_a_paused_game():
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)
@@ -138,6 +171,16 @@ def test_pause_controls_are_separate_and_render_for_a_paused_game():
     assert ui.pause_rect().collidepoint(ui.pause_rect().center)
 
 
+def test_pause_button_slots_follow_the_centers_of_the_supplied_pause_panel():
+    pygame.font.init()
+    ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
+
+    assert ui.pause_resume_rect().center == (600, 342)
+    assert ui.pause_restart_rect().center == (600, 458)
+    assert ui.pause_menu_rect().center == (600, 574)
+    assert ui.pause_resume_rect().height == 100
+
+
 def test_ui_exposes_start_and_result_action_buttons():
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)
@@ -145,7 +188,18 @@ def test_ui_exposes_start_and_result_action_buttons():
     ui = UI(screen, game)
 
     assert ui.start_rect().size == (260, 64)
-    assert ui.result_action_rect().size == (220, 48)
+    assert ui.result_action_rect().size == (300, 70)
+
+
+def test_result_button_slots_form_a_centered_stack_inside_the_result_panel():
+    pygame.font.init()
+    ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
+
+    assert ui.result_primary_rect().center == (600, 490)
+    assert ui.result_retry_rect().center == (600, 565)
+    assert ui.result_menu_rect().center == (600, 635)
+    assert not ui.result_primary_rect().colliderect(ui.result_retry_rect())
+    assert not ui.result_retry_rect().colliderect(ui.result_menu_rect())
 
 
 def test_start_screen_draws_a_distinct_title_panel_and_start_button():

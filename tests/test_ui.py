@@ -17,6 +17,7 @@ from src.ui import (
     WORK_MAT_COLOR,
     GridLayout,
     WINDOW_SIZE,
+    format_elapsed_time,
 )
 from src.ui import UI
 
@@ -59,6 +60,31 @@ def test_arrow_cards_are_more_solid_but_hover_remains_more_transparent():
     assert ARROW_CARD_ALPHA > HOVERED_ARROW_CARD_ALPHA
 
 
+@pytest.mark.parametrize(
+    ("seconds", "expected"),
+    [(0.0, "00:00.00"), (9.5, "00:09.50"), (65.125, "01:05.12")],
+)
+def test_format_elapsed_time(seconds, expected):
+    assert format_elapsed_time(seconds) == expected
+
+
+def test_gameplay_and_result_controls_have_distinct_hit_areas():
+    pygame.font.init()
+    ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
+    rects = [
+        ui.restart_rect(),
+        ui.menu_rect(),
+        ui.result_primary_rect(),
+        ui.result_retry_rect(),
+        ui.result_menu_rect(),
+    ]
+
+    assert all(rect.width > 0 and rect.height > 0 for rect in rects)
+    assert not ui.restart_rect().colliderect(ui.menu_rect())
+    assert not ui.result_primary_rect().colliderect(ui.result_retry_rect())
+    assert not ui.result_retry_rect().colliderect(ui.result_menu_rect())
+
+
 def test_ui_exposes_start_and_result_action_buttons():
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)
@@ -66,7 +92,7 @@ def test_ui_exposes_start_and_result_action_buttons():
     ui = UI(screen, game)
 
     assert ui.start_rect().size == (260, 64)
-    assert ui.result_action_rect().size == (220, 52)
+    assert ui.result_action_rect().size == (220, 48)
 
 
 def test_start_screen_draws_a_distinct_title_panel_and_start_button():

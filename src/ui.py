@@ -29,6 +29,14 @@ MENU_PANEL_COLOR = (75, 48, 31)
 # The dark desk mat in the supplied work-table illustration. Puzzle cells stay
 # inside it so the board feels like a bead-art project on the work surface.
 WORK_MAT_RECT = pygame.Rect(180, 160, 840, 580)
+
+
+def format_elapsed_time(seconds: float) -> str:
+    """Format a non-negative level duration as MM:SS.hh."""
+    minutes, remaining = divmod(seconds, 60.0)
+    return f"{int(minutes):02d}:{remaining:05.2f}"
+
+
 COLOR_MAP = {
     "leaf_light": (138, 205, 90),
     "leaf": (105, 181, 78),
@@ -132,7 +140,19 @@ class UI:
         self.layout = GridLayout(origin=(origin_x, origin_y), cell_size=cell_size)
 
     def restart_rect(self) -> pygame.Rect:
-        return self.result_action_rect()
+        return pygame.Rect(842, 34, 128, 38)
+
+    def menu_rect(self) -> pygame.Rect:
+        return pygame.Rect(230, 34, 112, 38)
+
+    def result_primary_rect(self) -> pygame.Rect:
+        return pygame.Rect(490, 505, 220, 48)
+
+    def result_retry_rect(self) -> pygame.Rect:
+        return pygame.Rect(490, 561, 220, 42)
+
+    def result_menu_rect(self) -> pygame.Rect:
+        return pygame.Rect(490, 611, 220, 42)
 
     def start_rect(self) -> pygame.Rect:
         rect = pygame.Rect(0, 0, 260, 64)
@@ -140,9 +160,8 @@ class UI:
         return rect
 
     def result_action_rect(self) -> pygame.Rect:
-        rect = pygame.Rect(0, 0, 220, 52)
-        rect.center = (self.screen.get_width() // 2, self.screen.get_height() // 2 + 105)
-        return rect
+        """Backward-compatible name for the primary result action."""
+        return self.result_primary_rect()
 
     def draw(self) -> None:
         if self.game.state is GameState.START:
@@ -388,21 +407,30 @@ class UI:
             pygame.draw.polygon(self.screen, color, arm)
 
     def _draw_hud(self) -> None:
-        pygame.draw.rect(self.screen, HUD_COLOR, (220, 22, 760, 62), border_radius=12)
-        text = (
-            f"LEVEL {self.game.level_number:02d}/{self.game.level_count} {self.game.level_name}    "
-            f"LIVES {self.game.lives}    "
-            f"MISTAKES {self.game.mistakes}    ARROWS {self.game.board.remaining_arrows()}"
+        pygame.draw.rect(self.screen, HUD_COLOR, (220, 18, 760, 76), border_radius=12)
+        level_text = self.small_font.render(
+            f"LEVEL {self.game.level_number:02d}/{self.game.level_count}  {self.game.level_name}",
+            True,
+            (250, 230, 133),
         )
-        surface = self.font.render(text, True, (250, 230, 133))
-        self.screen.blit(surface, (250, 42))
+        stats_text = self.small_font.render(
+            f"TIME {format_elapsed_time(self.game.elapsed_seconds)}   "
+            f"LIVES {self.game.lives}   MISTAKES {self.game.mistakes}   "
+            f"ARROWS {self.game.board.remaining_arrows()}",
+            True,
+            (240, 245, 250),
+        )
+        self.screen.blit(level_text, (360, 28))
+        self.screen.blit(stats_text, (360, 57))
+        self._draw_action_button(self.menu_rect(), "MENU", color=(109, 132, 151))
+        self._draw_action_button(self.restart_rect(), "RESTART")
 
     def _draw_result_panel(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((12, 28, 54, 120))
         self.screen.blit(overlay, (0, 0))
 
-        panel = pygame.Rect(0, 0, 470, 360)
+        panel = pygame.Rect(0, 0, 500, 540)
         panel.center = self.screen.get_rect().center
         pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=16)
         if self.game.state is GameState.FAILED:
@@ -411,27 +439,56 @@ class UI:
             title = "LEVEL CLEAR"
         else:
             title = "ALL CLEAR"
-        title_surface = self.font.render(title, True, (250, 230, 133))
+        title_surface = self.title_font.render(title, True, (250, 230, 133))
         self.screen.blit(
             title_surface,
-            title_surface.get_rect(center=(panel.centerx, panel.top + 80)),
+            title_surface.get_rect(center=(panel.centerx, panel.top + 78)),
         )
 
-        stats = self.small_font.render(
+        time_text = self.small_font.render(
+            f"Time: {format_elapsed_time(self.game.elapsed_seconds)}",
+            True,
+            (240, 245, 250),
+        )
+        mistakes_text = self.small_font.render(
             f"Mistakes: {self.game.mistakes}", True, (240, 245, 250)
         )
+        self.screen.blit(time_text, time_text.get_rect(center=(panel.centerx, panel.top + 152)))
         self.screen.blit(
-            stats,
-            stats.get_rect(center=(panel.centerx, panel.top + 140)),
+            mistakes_text,
+            mistakes_text.get_rect(center=(panel.centerx, panel.top + 188)),
         )
+        if self.game.state is GameState.CLEARED and self.game.level_summary is not None:
+            stars = "★" * self.game.level_summary.stars + "☆" * (
+                3 - self.game.level_summary.stars
+            )
+            stars_text = self.font.render(f"Stars: {stars}", True, (250, 230, 133))
+            self.screen.blit(
+                stars_text,
+                stars_text.get_rect(center=(panel.centerx, panel.top + 238)),
+            )
 
-        button = self.result_action_rect()
-        pygame.draw.rect(self.screen, (105, 181, 78), button, border_radius=8)
         if self.game.state is GameState.FAILED:
             button_text = "RESTART LEVEL"
         elif self.game.has_next_level:
             button_text = "NEXT LEVEL"
         else:
             button_text = "RESTART GAME"
-        label = self.small_font.render(button_text, True, (255, 255, 255))
-        self.screen.blit(label, label.get_rect(center=button.center))
+        self._draw_action_button(self.result_primary_rect(), button_text)
+        if self.game.state is GameState.CLEARED:
+            self._draw_action_button(
+                self.result_retry_rect(), "RETRY LEVEL", color=(109, 132, 151)
+            )
+        self._draw_action_button(self.result_menu_rect(), "MAIN MENU", color=(109, 132, 151))
+
+    def _draw_action_button(
+        self,
+        rect: pygame.Rect,
+        label: str,
+        *,
+        color: tuple[int, int, int] = (105, 181, 78),
+    ) -> None:
+        pygame.draw.rect(self.screen, color, rect, border_radius=8)
+        pygame.draw.rect(self.screen, (220, 238, 224), rect, 2, border_radius=8)
+        surface = self.small_font.render(label, True, (255, 255, 255))
+        self.screen.blit(surface, surface.get_rect(center=rect.center))

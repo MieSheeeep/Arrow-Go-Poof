@@ -33,19 +33,23 @@ class LevelSummary:
 
     elapsed_seconds: float
     mistakes: int
+    score: int
+    max_score: int
     stars: int
 
 
-def _stars_for(
-    elapsed_seconds: float,
-    mistakes: int,
-    limits: tuple[float, float],
-) -> int:
-    """Return a 1--3 star rating for a completed level."""
-    three_star_limit, two_star_limit = limits
-    if elapsed_seconds <= three_star_limit and mistakes == 0:
+def _max_score_for_arrow_count(arrow_count: int) -> int:
+    """Return the score for clearing every arrow in one uninterrupted combo."""
+    return 5 * arrow_count * (arrow_count + 1)
+
+
+def _stars_for_score(score: int, max_score: int) -> int:
+    """Return a 1--3 star rating from a completed level's score ratio."""
+    if max_score <= 0:
+        raise ValueError("max_score must be positive")
+    if score * 100 >= max_score * 85:
         return 3
-    if elapsed_seconds <= two_star_limit and mistakes <= 1:
+    if score * 100 >= max_score * 60:
         return 2
     return 1
 
@@ -58,7 +62,6 @@ class Game:
         *,
         start_in_menu: bool = False,
         level_names: Sequence[str] | None = None,
-        star_thresholds: Sequence[tuple[float, float]] | None = None,
         time_limits: Sequence[float] | None = None,
     ) -> None:
         if type(max_lives) is not int or max_lives <= 0:
@@ -77,22 +80,6 @@ class Game:
             self.level_names = tuple(level_names)
             if len(self.level_names) != len(self.level_factories):
                 raise ValueError("level_names must match the number of level factories")
-        if star_thresholds is None:
-            self.star_thresholds = tuple((60.0, 120.0) for _ in self.level_factories)
-        else:
-            self.star_thresholds = tuple(star_thresholds)
-            if len(self.star_thresholds) != len(self.level_factories):
-                raise ValueError("star_thresholds must match the number of level factories")
-            for limits in self.star_thresholds:
-                if (
-                    not isinstance(limits, tuple)
-                    or len(limits) != 2
-                    or not all(math.isfinite(limit) and limit > 0 for limit in limits)
-                    or limits[0] >= limits[1]
-                ):
-                    raise ValueError(
-                        "each star threshold pair must be positive and increasing"
-                    )
         if time_limits is None:
             self.time_limits = tuple(180.0 for _ in self.level_factories)
         else:
@@ -137,6 +124,7 @@ class Game:
 
     def _load_level(self) -> None:
         self.board = self.level_factories[self.level_index]()
+        self.max_score = _max_score_for_arrow_count(self.board.remaining_arrows())
 
     def _reset_runtime(self) -> None:
         self.lives = self.max_lives
@@ -164,6 +152,7 @@ class Game:
     def load_custom_board(self, board: Board) -> None:
         """Swap in a caller-provided board and start a fresh attempt."""
         self.board = board
+        self.max_score = _max_score_for_arrow_count(self.board.remaining_arrows())
         self._reset_runtime()
         self.custom_level = True
         self.state = GameState.CLEARED if self.board.is_cleared() else GameState.PLAYING
@@ -247,6 +236,7 @@ class Game:
             "elapsed_seconds": self.elapsed_seconds,
             "combo": self.combo,
             "score": self.score,
+            "max_score": self.max_score,
         }
 
     def load_state(self, data: dict) -> None:
@@ -258,6 +248,12 @@ class Game:
         self.elapsed_seconds = float(data["elapsed_seconds"])
         self.combo = int(data.get("combo", 0))
         self.score = int(data.get("score", 0))
+        self.max_score = int(
+            data.get(
+                "max_score",
+                _max_score_for_arrow_count(self.board.remaining_arrows()),
+            )
+        )
         self.max_combo = self.combo
         self.level_summary = None
         self.animations = []
@@ -296,11 +292,9 @@ class Game:
                 self.level_summary = LevelSummary(
                     self.elapsed_seconds,
                     self.mistakes,
-                    _stars_for(
-                        self.elapsed_seconds,
-                        self.mistakes,
-                        self.star_thresholds[self.level_index],
-                    ),
+                    self.score,
+                    self.max_score,
+                    _stars_for_score(self.score, self.max_score),
                 )
                 self.animations.append(StarRevealAnimation(self.level_summary.stars))
                 self.state = GameState.CLEARED

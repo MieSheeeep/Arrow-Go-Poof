@@ -5,7 +5,6 @@ from src.game import Game, GameState
 from src.levels import (
     LEVEL_FACTORIES,
     LEVEL_NAMES,
-    LEVEL_STAR_THRESHOLDS,
     LEVEL_TIME_LIMITS,
     create_random_level_board,
 )
@@ -93,7 +92,6 @@ def main() -> None:
             LEVEL_FACTORIES,
             start_in_menu=True,
             level_names=LEVEL_NAMES,
-            star_thresholds=LEVEL_STAR_THRESHOLDS,
             time_limits=LEVEL_TIME_LIMITS,
         )
         ui = UI(screen, game)

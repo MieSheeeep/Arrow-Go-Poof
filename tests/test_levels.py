@@ -1,3 +1,5 @@
+import src.levels as levels
+
 from src.levels import (
     ENCHANTED_APPLE_ARROW_GRID,
     ENCHANTED_APPLE_COLOR_GRID,
@@ -13,7 +15,7 @@ from src.levels import (
     FLOWER_SOLUTION,
     LEVEL_FACTORIES,
     LEVEL_NAMES,
-    LEVEL_STAR_THRESHOLDS,
+    LEVEL_TIME_LIMITS,
     SAMPLE_ARROW_GRID,
     SAMPLE_COLOR_GRID,
     SUN_ARROW_GRID,
@@ -128,10 +130,9 @@ def test_course_has_three_named_level_factories():
     assert all(factory().remaining_arrows() > 0 for factory in LEVEL_FACTORIES)
 
 
-def test_campaign_defines_one_increasing_star_threshold_pair_per_level():
-    assert LEVEL_STAR_THRESHOLDS == ((90.0, 150.0), (80.0, 130.0), (150.0, 240.0))
-    assert len(LEVEL_STAR_THRESHOLDS) == len(LEVEL_FACTORIES)
-    assert all(0 < three < two for three, two in LEVEL_STAR_THRESHOLDS)
+def test_campaign_has_time_limits_but_no_time_based_star_thresholds():
+    assert len(LEVEL_TIME_LIMITS) == len(LEVEL_FACTORIES)
+    assert "LEVEL_STAR_THRESHOLDS" not in vars(levels)
 
 
 def test_runtime_campaign_uses_apple_ball_and_hello_kitty_in_order():

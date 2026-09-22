@@ -464,12 +464,6 @@ def create_sun_board() -> Board:
     )
 
 
-LEVEL_STAR_THRESHOLDS = (
-    (90.0, 150.0),  # ENCHANTED APPLE
-    (80.0, 130.0),  # BEAD BALL
-    (150.0, 240.0),  # MOON KITTY
-)
-
 LEVEL_TIME_LIMITS = (
     180.0,  # ENCHANTED APPLE
     160.0,  # BEAD BALL

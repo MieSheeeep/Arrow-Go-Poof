@@ -93,19 +93,34 @@ def test_pause_freezes_time_and_resume_continues_the_same_level():
 
 
 @pytest.mark.parametrize(
-    ("elapsed", "mistakes", "expected_stars"),
-    [(9.5, 0, 3), (15.0, 1, 2), (25.0, 0, 1), (9.5, 2, 1)],
+    ("score", "expected_stars"),
+    [(550, 3), (468, 3), (467, 2), (330, 2), (329, 1)],
 )
-def test_clear_summary_uses_time_and_mistake_star_rules(
-    elapsed, mistakes, expected_stars
-):
-    game = Game(board_factory([["R"]]), star_thresholds=((10.0, 20.0),))
+def test_clear_summary_uses_score_ratio_star_rules(score, expected_stars):
+    game = Game(board_factory([["R"] * 10]))
+    game.board.arrow_grid[0][:9] = ["."] * 9
+    game.score = score - 10
+
+    game.click(0, 9)
+
+    assert game.level_summary is not None
+    assert game.level_summary.score == score
+    assert game.level_summary.max_score == 550
+    assert game.level_summary.stars == expected_stars
+
+
+@pytest.mark.parametrize(("elapsed", "mistakes"), [(0.0, 0), (999.0, 9)])
+def test_same_score_gets_same_stars_regardless_of_time_and_mistakes(elapsed, mistakes):
+    game = Game(board_factory([["R"]]))
     game.elapsed_seconds = elapsed
     game.mistakes = mistakes
 
     game.click(0, 0)
 
-    assert game.level_summary == LevelSummary(elapsed, mistakes, expected_stars)
+    assert game.level_summary is not None
+    assert game.level_summary.score == 10
+    assert game.level_summary.max_score == 10
+    assert game.level_summary.stars == 3
 
 
 def test_game_starts_cleared_when_factory_returns_empty_board():

@@ -2,7 +2,12 @@ import math
 
 import pytest
 
-from src.animation import CollisionAnimation, FlyOutAnimation
+from src.animation import (
+    CollisionAnimation,
+    FlyOutAnimation,
+    HeartLossAnimation,
+    StarRevealAnimation,
+)
 from src.board import Board
 from src.game import Game, GameState, LevelSummary
 from src.levels import LEVEL_FACTORIES, LEVEL_NAMES
@@ -52,6 +57,24 @@ def test_timer_does_not_start_in_menu_and_restart_resets_it():
 
     assert game.elapsed_seconds == 0.0
     assert game.level_summary is None
+
+
+def test_countdown_expires_a_playing_level_and_freezes_when_paused():
+    game = Game(board_factory([["R", "U"]]), time_limits=(10.0,))
+
+    assert game.remaining_seconds == pytest.approx(10.0)
+    game.update(3.25)
+    assert game.remaining_seconds == pytest.approx(6.75)
+
+    game.pause()
+    game.update(10.0)
+    assert game.remaining_seconds == pytest.approx(6.75)
+
+    game.resume()
+    game.update(7.0)
+    assert game.state is GameState.FAILED
+    assert game.failure_reason == "time_up"
+    assert game.remaining_seconds == 0.0
 
 
 def test_pause_freezes_time_and_resume_continues_the_same_level():
@@ -107,6 +130,7 @@ def test_successful_click_clears_board_and_creates_fly_out_animation():
     assert result is not None and result.success is True
     assert game.board.get_cell(0, 0) == "."
     assert game.animations and isinstance(game.animations[0], FlyOutAnimation)
+    assert any(isinstance(animation, StarRevealAnimation) for animation in game.animations)
     assert game.state is GameState.CLEARED
     assert game.lives == 3
 
@@ -122,6 +146,12 @@ def test_blocked_click_deducts_life_and_creates_collision_animation():
     assert game.mistakes == 1
     assert game.state is GameState.PLAYING
     assert isinstance(game.animations[0], CollisionAnimation)
+    heart_animation = next(
+        animation
+        for animation in game.animations
+        if isinstance(animation, HeartLossAnimation)
+    )
+    assert heart_animation.heart_index == 2
     assert game.error_cells == set()
 
 

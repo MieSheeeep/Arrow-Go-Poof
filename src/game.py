@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from enum import Enum
 from collections.abc import Callable, Sequence
 
-from src.animation import CollisionAnimation, FlyOutAnimation
+from src.animation import (
+    CollisionAnimation,
+    FlyOutAnimation,
+    HeartLossAnimation,
+    StarRevealAnimation,
+)
 from src.board import Board, MoveResult
 
 
@@ -19,7 +24,7 @@ class GameState(Enum):
     PAUSED = "paused"
 
 
-Animation = FlyOutAnimation | CollisionAnimation
+Animation = FlyOutAnimation | CollisionAnimation | HeartLossAnimation | StarRevealAnimation
 
 
 @dataclass(frozen=True)
@@ -54,6 +59,7 @@ class Game:
         start_in_menu: bool = False,
         level_names: Sequence[str] | None = None,
         star_thresholds: Sequence[tuple[float, float]] | None = None,
+        time_limits: Sequence[float] | None = None,
     ) -> None:
         if type(max_lives) is not int or max_lives <= 0:
             raise ValueError("max_lives must be a positive integer")
@@ -87,6 +93,16 @@ class Game:
                     raise ValueError(
                         "each star threshold pair must be positive and increasing"
                     )
+        if time_limits is None:
+            self.time_limits = tuple(180.0 for _ in self.level_factories)
+        else:
+            self.time_limits = tuple(time_limits)
+            if len(self.time_limits) != len(self.level_factories) or not all(
+                math.isfinite(limit) and limit > 0 for limit in self.time_limits
+            ):
+                raise ValueError(
+                    "time_limits must contain one positive finite limit per level"
+                )
         self.max_lives = max_lives
         self.level_index = 0
         self._start_in_menu = start_in_menu
@@ -110,6 +126,14 @@ class Game:
     def has_next_level(self) -> bool:
         return self.level_index + 1 < self.level_count
 
+    @property
+    def time_limit_seconds(self) -> float:
+        return self.time_limits[self.level_index]
+
+    @property
+    def remaining_seconds(self) -> float:
+        return max(0.0, self.time_limit_seconds - self.elapsed_seconds)
+
     def _load_level(self) -> None:
         self.board = self.level_factories[self.level_index]()
 
@@ -120,6 +144,7 @@ class Game:
         self.level_summary: LevelSummary | None = None
         self.animations: list[Animation] = []
         self.error_cells: set[tuple[int, int]] = set()
+        self.failure_reason: str | None = None
 
     def restart(self) -> None:
         self._load_level()
@@ -182,6 +207,7 @@ class Game:
                         self.star_thresholds[self.level_index],
                     ),
                 )
+                self.animations.append(StarRevealAnimation(self.level_summary.stars))
                 self.state = GameState.CLEARED
         elif result.reason == "blocked":
             assert result.direction is not None
@@ -191,7 +217,9 @@ class Game:
             self.animations.append(
                 CollisionAnimation(row, col, result.blocker, result.direction)
             )
+            self.animations.append(HeartLossAnimation(self.lives))
             if self.lives == 0:
+                self.failure_reason = "lives"
                 self.state = GameState.FAILED
         return result
 
@@ -201,7 +229,12 @@ class Game:
         if self.state is GameState.PAUSED:
             return
         if self.state is GameState.PLAYING:
-            self.elapsed_seconds += delta_time
+            self.elapsed_seconds = min(
+                self.elapsed_seconds + delta_time, self.time_limit_seconds
+            )
+            if self.remaining_seconds == 0.0:
+                self.failure_reason = "time_up"
+                self.state = GameState.FAILED
         remaining: list[Animation] = []
         for animation in self.animations:
             animation.update(delta_time)

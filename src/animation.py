@@ -79,16 +79,138 @@ class FlyOutAnimation(_TimedAnimation):
         self.col = col
         self.direction = direction
         self.distance = distance
+        self.windup_duration = min(0.07, duration * 0.18)
+        self.flight_duration = duration - self.windup_duration
+
+    @property
+    def phase(self) -> str:
+        if not _reached(self.elapsed, self.windup_duration):
+            return "windup"
+        if not self.is_finished:
+            return "flying"
+        return "done"
+
+    @property
+    def flight_progress(self) -> float:
+        if self.phase == "windup":
+            return 0.0
+        return min(
+            (self.elapsed - self.windup_duration) / self.flight_duration,
+            1.0,
+        )
 
     @property
     def offset_cells(self) -> tuple[float, float]:
         row_delta, col_delta = _direction_delta(self.direction)
-        eased = 1.0 - (1.0 - self.progress) ** 2
+        if self.phase == "windup":
+            ratio = self.elapsed / self.windup_duration
+            pull = 0.16 * math.sin(ratio * math.pi)
+            return -row_delta * pull, -col_delta * pull
+        eased = 1.0 - (1.0 - self.flight_progress) ** 2
         return row_delta * self.distance * eased, col_delta * self.distance * eased
+
+    @property
+    def scale(self) -> float:
+        if self.phase == "windup":
+            ratio = self.elapsed / self.windup_duration
+            return 1.0 + 0.10 * math.sin(ratio * math.pi)
+        return 1.0 + 0.035 * (1.0 - self.flight_progress)
+
+    @property
+    def trail_length_cells(self) -> float:
+        if self.phase == "windup":
+            return 0.0
+        return 0.25 + 0.75 * self.flight_progress
 
     @property
     def color_state(self) -> str:
         return "normal"
+
+
+class HeartLossAnimation(_TimedAnimation):
+    """Transient HUD feedback for a life slot that was just consumed."""
+
+    def __init__(self, heart_index: int, duration: float = 0.32) -> None:
+        if type(heart_index) is not int or heart_index < 0:
+            raise ValueError("heart_index must be a non-negative integer")
+        super().__init__(duration)
+        self.heart_index = heart_index
+        self.flash_duration = min(0.10, duration * 0.35)
+
+    @property
+    def phase(self) -> str:
+        if not _reached(self.elapsed, self.flash_duration):
+            return "flash"
+        if not self.is_finished:
+            return "fade"
+        return "done"
+
+    @property
+    def scale(self) -> float:
+        if self.phase == "flash":
+            ratio = self.elapsed / self.flash_duration
+            return 1.0 + 0.18 * math.sin(ratio * math.pi)
+        if self.phase == "fade":
+            ratio = (self.elapsed - self.flash_duration) / (
+                self.duration - self.flash_duration
+            )
+            return 1.0 - 0.12 * ratio
+        return 0.88
+
+    @property
+    def alpha(self) -> int:
+        if self.phase == "flash":
+            return 255
+        if self.phase == "fade":
+            ratio = (self.elapsed - self.flash_duration) / (
+                self.duration - self.flash_duration
+            )
+            return round(255 * (1.0 - ratio))
+        return 0
+
+    @property
+    def shake_offset_x(self) -> int:
+        if self.phase != "flash":
+            return 0
+        ratio = self.elapsed / self.flash_duration
+        return round(math.sin(ratio * math.pi * 4) * 3)
+
+
+class StarRevealAnimation(_TimedAnimation):
+    """Reveal the earned result stars in a short, staggered sequence."""
+
+    def __init__(
+        self,
+        star_count: int,
+        *,
+        initial_delay: float = 0.14,
+        stagger: float = 0.18,
+        pop_duration: float = 0.22,
+    ) -> None:
+        if type(star_count) is not int or not 1 <= star_count <= 3:
+            raise ValueError("star_count must be an integer between 1 and 3")
+        for value in (initial_delay, stagger, pop_duration):
+            if not math.isfinite(value) or value <= 0:
+                raise ValueError("star reveal timings must be positive")
+        self.star_count = star_count
+        self.initial_delay = initial_delay
+        self.stagger = stagger
+        self.pop_duration = pop_duration
+        super().__init__(initial_delay + stagger * (star_count - 1) + pop_duration)
+
+    def star_progress(self, index: int) -> float:
+        if type(index) is not int or not 0 <= index <= 2:
+            raise ValueError("star index must be between 0 and 2")
+        if index >= self.star_count:
+            return 0.0
+        return min(
+            max(0.0, (self.elapsed - self.initial_delay - index * self.stagger) / self.pop_duration),
+            1.0,
+        )
+
+    def star_scale(self, index: int) -> float:
+        progress = self.star_progress(index)
+        return 1.0 + 0.30 * math.sin(progress * math.pi)
 
 
 class CollisionAnimation(_TimedAnimation):

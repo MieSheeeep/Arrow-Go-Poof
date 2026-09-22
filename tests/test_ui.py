@@ -1,7 +1,7 @@
 import pygame
 import pytest
 
-from src.animation import FlyOutAnimation
+from src.animation import FlyOutAnimation, HeartLossAnimation, StarRevealAnimation
 from src.board import Board
 from src.game import Game
 from src.levels import create_tree_board
@@ -11,6 +11,7 @@ from src.ui import (
     ARROW_TILE,
     BACKGROUND,
     COLOR_MAP,
+    COVER_START_RECT,
     HOVERED_ARROW_CARD_ALPHA,
     MENU_BACKGROUND_PATH,
     MENU_PANEL_COLOR,
@@ -31,6 +32,8 @@ from src.ui import (
     rating_star_points,
     remove_isolated_artifacts,
     reveal_glow_strength,
+    countdown_color,
+    format_countdown_time,
 )
 from src.ui import UI
 
@@ -81,6 +84,20 @@ def test_format_elapsed_time(seconds, expected):
     assert format_elapsed_time(seconds) == expected
 
 
+@pytest.mark.parametrize(
+    ("seconds", "expected"),
+    [(0.0, "00:00"), (9.5, "00:09"), (65.125, "01:05")],
+)
+def test_format_countdown_time(seconds, expected):
+    assert format_countdown_time(seconds) == expected
+
+
+def test_countdown_color_steps_from_calm_to_urgent():
+    assert countdown_color(40.0) == (114, 204, 132)
+    assert countdown_color(20.0) == (248, 188, 81)
+    assert countdown_color(10.0) == (241, 94, 100)
+
+
 def test_reveal_glow_strength_is_immediate_then_fades_to_zero():
     animation = FlyOutAnimation(0, 0, "R")
 
@@ -103,6 +120,36 @@ def test_successful_flyout_immediately_brightens_the_revealed_pixel():
     rect = ui.layout.cell_rect(0, 1)
     pixel = screen.get_at((rect.left + 5, rect.centery))[:3]
     assert sum(pixel) > sum(COLOR_MAP["ball_red"])
+
+
+def test_hud_draws_the_heart_loss_feedback_above_the_static_life_icons(monkeypatch):
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R", "U"]], [["leaf", "leaf"]]))
+    ui = UI(screen, game)
+    game.click(0, 0)
+    calls = []
+    monkeypatch.setattr(ui, "_draw_heart_loss", lambda animation: calls.append(animation))
+
+    ui.draw()
+
+    assert len(calls) == 1
+    assert isinstance(calls[0], HeartLossAnimation)
+
+
+def test_result_panel_draws_the_staggered_star_feedback(monkeypatch):
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R"]], [["leaf"]]))
+    ui = UI(screen, game)
+    game.click(0, 0)
+    calls = []
+    monkeypatch.setattr(ui, "_draw_result_stars", lambda panel: calls.append(panel))
+
+    ui.draw()
+
+    assert len(calls) == 1
+    assert any(isinstance(animation, StarRevealAnimation) for animation in game.animations)
 
 
 def test_rating_star_points_create_a_five_point_polygon():
@@ -223,7 +270,7 @@ def test_ui_exposes_start_and_result_action_buttons():
     game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
     ui = UI(screen, game)
 
-    assert ui.start_rect().size == (260, 64)
+    assert ui.start_rect() == COVER_START_RECT
     assert ui.result_action_rect().size == (300, 70)
 
 
@@ -238,16 +285,30 @@ def test_result_button_slots_form_a_centered_stack_inside_the_result_panel():
     assert not ui.result_retry_rect().colliderect(ui.result_menu_rect())
 
 
-def test_start_screen_draws_a_distinct_title_panel_and_start_button():
+def test_start_screen_draws_the_cover_without_a_programmatic_panel():
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)
     game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
 
     UI(screen, game).draw()
 
-    assert screen.get_at((195, 130))[:3] == MENU_PANEL_COLOR
-    assert screen.get_at((600, 515))[:3] != MENU_PANEL_COLOR
+    assert screen.get_at((195, 130))[:3] != MENU_PANEL_COLOR
     assert screen.get_at((80, 80))[:3] != BACKGROUND
+
+
+def test_start_screen_uses_the_cover_art_without_a_programmatic_panel(monkeypatch):
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R"]], [["leaf"]]), start_in_menu=True)
+    ui = UI(screen, game)
+
+    monkeypatch.setattr(
+        ui,
+        "_draw_action_button",
+        lambda: pytest.fail("the cover already contains its own start button"),
+    )
+
+    ui.draw()
 
 
 def test_main_menu_background_is_packaged_with_the_project():
@@ -292,14 +353,21 @@ def test_ui_scales_the_16_by_16_first_level_to_fit_the_play_area():
     )
 
 
-def test_gameplay_uses_the_same_desk_background_as_the_start_screen():
+def test_cover_is_used_only_for_the_start_screen():
     pygame.font.init()
     screen = pygame.Surface(WINDOW_SIZE)
-    ui = UI(screen, Game(create_tree_board))
+    game = Game(create_tree_board, start_in_menu=True)
+    ui = UI(screen, game)
+    ui.cover_background.fill((210, 40, 60))
+    ui.gameplay_background.fill((30, 70, 200))
 
     ui.draw()
+    assert screen.get_at((20, 400))[:3] == (210, 40, 60)
 
-    assert screen.get_at((20, 400))[:3] == ui.menu_background.get_at((20, 400))[:3]
+    game.start()
+    ui.draw()
+
+    assert screen.get_at((20, 400))[:3] == (30, 70, 200)
 
 
 def test_arrow_tiles_leave_their_rounded_corner_transparent():
@@ -315,7 +383,7 @@ def test_arrow_tiles_leave_their_rounded_corner_transparent():
     )
     tile = ui.layout.cell_rect(row, col)
 
-    assert screen.get_at(tile.topleft)[:3] == ui.menu_background.get_at(tile.topleft)[:3]
+    assert screen.get_at(tile.topleft)[:3] == ui.gameplay_background.get_at(tile.topleft)[:3]
 
 
 def test_cleared_pixel_uses_its_unmodified_picture_colour():
@@ -353,3 +421,29 @@ def test_hovered_arrow_tile_uses_a_soft_cyan_glow(monkeypatch):
 
     glow_pixel = screen.get_at((tile.left + 1, tile.centery))
     assert glow_pixel.b > glow_pixel.r + 25
+
+
+def test_pause_panel_uses_text_buttons_without_button_skins(monkeypatch):
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+    calls = []
+
+    monkeypatch.setattr(
+        ui,
+        "_draw_text_button",
+        lambda rect, label: calls.append((rect, label)),
+    )
+    monkeypatch.setattr(
+        ui,
+        "_draw_action_button",
+        lambda *args, **kwargs: pytest.fail("pause buttons must not use skins"),
+    )
+
+    ui._draw_pause_panel()
+
+    assert calls == [
+        (ui.pause_resume_rect(), "CONTINUE"),
+        (ui.pause_restart_rect(), "RESTART LEVEL"),
+        (ui.pause_menu_rect(), "MAIN MENU"),
+    ]

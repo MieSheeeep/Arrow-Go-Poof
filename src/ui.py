@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pygame
 
-from src.animation import FlyOutAnimation
+from src.animation import (
+    CollisionAnimation,
+    FlyOutAnimation,
+    HeartLossAnimation,
+    StarRevealAnimation,
+)
 from src.game import Game, GameState
 
 
@@ -27,6 +32,7 @@ ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
 MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
+COVER_PATH = Path(__file__).resolve().parent.parent / "assets" / "cover.png"
 UI_ASSET_DIR = Path(__file__).resolve().parent.parent / "assets" / "ui"
 BUTTON_STATES_PATH = UI_ASSET_DIR / "button-states.png"
 HEARTS_PATH = UI_ASSET_DIR / "hearts.png"
@@ -34,6 +40,10 @@ PAUSE_BUTTON_PATH = UI_ASSET_DIR / "pause-button.png"
 PAUSE_PANEL_PATH = UI_ASSET_DIR / "pause-panel.png"
 RATING_STARS_PATH = UI_ASSET_DIR / "rating-stars.png"
 TOP_STATUS_BAR_PATH = UI_ASSET_DIR / "top-status-bar.png"
+PAUSE_BUTTON_FONT_PATH = Path(r"C:\Windows\Fonts\segoeuib.ttf")
+# Transparent hit area over the baked-in "开始游戏" button in cover.png.
+# The cover is rendered to WINDOW_SIZE, so tune this rectangle in window pixels.
+COVER_START_RECT = pygame.Rect(350, 450, 470, 120)
 BUTTON_SPRITE_CROPS = {
     "normal": pygame.Rect(50, 230, 675, 240),
     "hover": pygame.Rect(750, 230, 675, 240),
@@ -50,6 +60,22 @@ def format_elapsed_time(seconds: float) -> str:
     """Format a non-negative level duration as MM:SS.hh."""
     minutes, remaining = divmod(seconds, 60.0)
     return f"{int(minutes):02d}:{remaining:05.2f}"
+
+
+def format_countdown_time(seconds: float) -> str:
+    """Format a remaining duration as the compact HUD clock MM:SS."""
+    whole_seconds = max(0, int(seconds))
+    minutes, remainder = divmod(whole_seconds, 60)
+    return f"{minutes:02d}:{remainder:02d}"
+
+
+def countdown_color(remaining_seconds: float) -> tuple[int, int, int]:
+    """Return the HUD urgency colour for a level countdown."""
+    if remaining_seconds <= 10.0:
+        return (241, 94, 100)
+    if remaining_seconds <= 25.0:
+        return (248, 188, 81)
+    return (114, 204, 132)
 
 
 def reveal_glow_strength(animation: FlyOutAnimation) -> float:
@@ -211,9 +237,19 @@ class UI:
         self.font = pygame.font.Font(None, 30)
         self.small_font = pygame.font.Font(None, 24)
         self.title_font = pygame.font.Font(None, 56)
-        self.menu_background = pygame.transform.smoothscale(
+        pause_font_path = (
+            PAUSE_BUTTON_FONT_PATH
+            if PAUSE_BUTTON_FONT_PATH.exists()
+            else None
+        )
+        self.pause_button_font = pygame.font.Font(pause_font_path, 32)
+        cover_path = COVER_PATH if COVER_PATH.is_file() else MENU_BACKGROUND_PATH
+        self.cover_background = pygame.transform.smoothscale(
             # Keep the source surface unconverted so UI can also be rendered
             # onto headless test surfaces before a display mode exists.
+            pygame.image.load(cover_path), WINDOW_SIZE
+        )
+        self.gameplay_background = pygame.transform.smoothscale(
             pygame.image.load(MENU_BACKGROUND_PATH), WINDOW_SIZE
         )
         self.top_status_bar = pygame.transform.scale(
@@ -306,7 +342,7 @@ class UI:
         return pygame.Rect(230, 34, 112, 38)
 
     def pause_rect(self) -> pygame.Rect:
-        return pygame.Rect(1035, 23, 62, 62)
+        return pygame.Rect(1090, 23, 62, 62)
 
     def pause_resume_rect(self) -> pygame.Rect:
         return pygame.Rect(445, 292, 310, 100)
@@ -327,9 +363,7 @@ class UI:
         return pygame.Rect(450, 605, 300, 60)
 
     def start_rect(self) -> pygame.Rect:
-        rect = pygame.Rect(0, 0, 260, 64)
-        rect.center = (self.screen.get_width() // 2, self.screen.get_height() // 2 + 115)
-        return rect
+        return COVER_START_RECT.copy()
 
     def result_action_rect(self) -> pygame.Rect:
         """Backward-compatible name for the primary result action."""
@@ -338,7 +372,6 @@ class UI:
     def draw(self) -> None:
         if self.game.state is GameState.START:
             self._draw_menu_background()
-            self._draw_start_panel()
             return
         self._draw_background()
         self._draw_board()
@@ -349,50 +382,13 @@ class UI:
         elif self.game.state is GameState.PAUSED:
             self._draw_pause_panel()
 
-    def _draw_start_panel(self) -> None:
-        panel = pygame.Rect(150, 92, 900, 228)
-        pygame.draw.rect(self.screen, MENU_PANEL_COLOR, panel, border_radius=18)
-        pygame.draw.rect(
-            self.screen,
-            (145, 95, 55),
-            (panel.left, panel.top, panel.width, 11),
-            border_radius=18,
-        )
-
-        # A tiny board motif makes this feel like a real main menu while
-        # keeping START GAME as the only actionable control.
-        for rect, direction, color in (
-            (pygame.Rect(218, 165, 44, 44), "U", (255, 221, 104)),
-            (pygame.Rect(264, 210, 44, 44), "R", (255, 171, 198)),
-            (pygame.Rect(890, 165, 44, 44), "D", (138, 205, 90)),
-            (pygame.Rect(936, 210, 44, 44), "L", (247, 190, 64)),
-        ):
-            pygame.draw.rect(self.screen, ARROW_TILE, rect, border_radius=7)
-            self._draw_arrow(rect, direction, color)
-
-        title = self.title_font.render("ARROW GO POOF", True, (250, 230, 133))
-        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.top + 66)))
-        subtitle = self.small_font.render(
-            "Follow the arrows. Reveal the picture.", True, (240, 245, 250)
-        )
-        self.screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.top + 126)))
-        details = self.small_font.render(
-            f"{self.game.level_count} pixel puzzles  |  {self.game.max_lives} lives per level",
-            True,
-            (240, 245, 250),
-        )
-        self.screen.blit(details, details.get_rect(center=(panel.centerx, panel.top + 166)))
-
-        button = self.start_rect()
-        self._draw_action_button(button, "START GAME")
-
     def _draw_menu_background(self) -> None:
-        """Draw the generated work desk behind the one-button main menu."""
-        self.screen.blit(self.menu_background, (0, 0))
+        """Draw the complete cover, including its baked-in start button."""
+        self.screen.blit(self.cover_background, (0, 0))
 
     def _draw_background(self) -> None:
-        """Keep gameplay and the start screen on the same craft desk."""
-        self.screen.blit(self.menu_background, (0, 0))
+        """Draw the empty work desk behind the puzzle and overlays."""
+        self.screen.blit(self.gameplay_background, (0, 0))
 
     def _draw_board(self) -> None:
         self._refresh_layout()
@@ -404,7 +400,9 @@ class UI:
             mouse_position = (-1, -1)
         hover_cell = self.cell_at(mouse_position)
         active_cells = {
-            (animation.row, animation.col) for animation in self.game.animations
+            (animation.row, animation.col)
+            for animation in self.game.animations
+            if isinstance(animation, (FlyOutAnimation, CollisionAnimation))
         }
         for row in range(self.game.board.rows):
             for col in range(self.game.board.cols):
@@ -482,12 +480,19 @@ class UI:
 
     def _draw_animations(self) -> None:
         for animation in self.game.animations:
+            if not isinstance(animation, (FlyOutAnimation, CollisionAnimation)):
+                continue
             rect = self.layout.cell_rect(animation.row, animation.col)
             offset_row, offset_col = animation.offset_cells
-            rect = rect.move(
-                round(offset_col * self.layout.cell_size),
-                round(offset_row * self.layout.cell_size),
+            center = (
+                rect.centerx + round(offset_col * self.layout.cell_size),
+                rect.centery + round(offset_row * self.layout.cell_size),
             )
+            scale = animation.scale if isinstance(animation, FlyOutAnimation) else 1.0
+            rect = pygame.Rect(0, 0, round(rect.width * scale), round(rect.height * scale))
+            rect.center = center
+            if isinstance(animation, FlyOutAnimation):
+                self._draw_fly_trail(rect, animation)
             is_error = animation.color_state == "error"
             self._draw_tile(
                 rect,
@@ -498,6 +503,28 @@ class UI:
             self._draw_arrow(rect, animation.direction, ERROR_ARROW if is_error else ARROW_COLOR)
             if isinstance(animation, FlyOutAnimation):
                 self._draw_reveal_glow(animation)
+
+    def _draw_fly_trail(self, rect: pygame.Rect, animation: FlyOutAnimation) -> None:
+        """Draw a compact fading trail behind an accelerating flying arrow."""
+        if animation.phase != "flying":
+            return
+        direction = {
+            "U": (0, 1),
+            "D": (0, -1),
+            "L": (1, 0),
+            "R": (-1, 0),
+        }[animation.direction]
+        trail_length = animation.trail_length_cells * self.layout.cell_size
+        for index in range(3, 0, -1):
+            ratio = index / 3
+            center = (
+                round(rect.centerx + direction[0] * trail_length * ratio),
+                round(rect.centery + direction[1] * trail_length * ratio),
+            )
+            radius = max(2, round(self.layout.cell_size * 0.11 * (1.1 - ratio * 0.45)))
+            trail = pygame.Surface((radius * 2 + 2, radius * 2 + 2), pygame.SRCALPHA)
+            pygame.draw.circle(trail, (*ARROW_COLOR, round(116 * (1.0 - ratio * 0.55))), trail.get_rect().center, radius)
+            self.screen.blit(trail, trail.get_rect(center=center))
 
     def _draw_tile(
         self,
@@ -617,16 +644,50 @@ class UI:
             (250, 230, 133),
         )
         time_text = self.small_font.render(
-            f"TIME {format_elapsed_time(self.game.elapsed_seconds)}",
+            f"TIME {format_countdown_time(self.game.remaining_seconds)}",
             True,
             (240, 245, 250),
         )
         self.screen.blit(level_text, (72, 46))
         self.screen.blit(time_text, (470, 46))
+        self._draw_countdown_bar()
         for index in range(3):
             heart = self.heart_full if index < self.game.lives else self.heart_empty
-            self.screen.blit(heart, (770 + index * 54, 37))
+            self.screen.blit(heart, (800 + index * 83, 37))
+        for animation in self.game.animations:
+            if isinstance(animation, HeartLossAnimation):
+                self._draw_heart_loss(animation)
         self.screen.blit(self.pause_icon, self.pause_rect().topleft)
+
+    def _draw_countdown_bar(self) -> None:
+        """Render remaining time as a calm-to-urgent progress strip."""
+        rect = pygame.Rect(470, 77, 180, 7)
+        pygame.draw.rect(self.screen, (27, 43, 61), rect, border_radius=4)
+        progress = self.game.remaining_seconds / self.game.time_limit_seconds
+        fill = rect.copy()
+        fill.width = round(rect.width * progress)
+        if fill.width:
+            color = countdown_color(self.game.remaining_seconds)
+            pygame.draw.rect(self.screen, color, fill, border_radius=4)
+            if self.game.remaining_seconds <= 10.0:
+                glow = pygame.Surface(rect.inflate(10, 10).size, pygame.SRCALPHA)
+                pulse = round(36 + 28 * abs(math.sin(self.game.elapsed_seconds * 8)))
+                pygame.draw.rect(glow, (*color, pulse), glow.get_rect(), border_radius=8)
+                self.screen.blit(glow, glow.get_rect(center=rect.center))
+
+    def _draw_heart_loss(self, animation: HeartLossAnimation) -> None:
+        """Overlay the just-lost full heart while it flashes and fades away."""
+        center = (817 + animation.heart_index * 83, 52)
+        if animation.phase == "flash":
+            glow = pygame.Surface((54, 50), pygame.SRCALPHA)
+            pygame.draw.ellipse(glow, (255, 72, 84, 100), glow.get_rect())
+            self.screen.blit(glow, glow.get_rect(center=center))
+        heart = pygame.transform.rotozoom(self.heart_full, 0, animation.scale)
+        heart.set_alpha(animation.alpha)
+        heart_rect = heart.get_rect(
+            center=(center[0] + animation.shake_offset_x, center[1])
+        )
+        self.screen.blit(heart, heart_rect)
 
     def _draw_result_panel(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
@@ -637,7 +698,7 @@ class UI:
         panel.center = self.screen.get_rect().center
         pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=16)
         if self.game.state is GameState.FAILED:
-            title = "TRY AGAIN"
+            title = "TIME UP" if self.game.failure_reason == "time_up" else "TRY AGAIN"
         elif self.game.has_next_level:
             title = "LEVEL CLEAR"
         else:
@@ -660,9 +721,7 @@ class UI:
                 stars_label,
                 stars_label.get_rect(center=(panel.centerx - 62, panel.top + 204)),
             )
-            for index in range(3):
-                star = self.star_full if index < self.game.level_summary.stars else self.star_empty
-                self.screen.blit(star, (panel.centerx - 15 + index * 38, panel.top + 187))
+            self._draw_result_stars(panel)
 
         if self.game.state is GameState.FAILED:
             button_text = "RESTART LEVEL"
@@ -679,6 +738,33 @@ class UI:
             self._draw_action_button(self.result_retry_rect(), "RETRY LEVEL")
         self._draw_action_button(self.result_menu_rect(), "MAIN MENU")
 
+    def _draw_result_stars(self, panel: pygame.Rect) -> None:
+        """Show empty stars first, then pop earned stars in a short sequence."""
+        assert self.game.level_summary is not None
+        reveal = next(
+            (
+                animation
+                for animation in self.game.animations
+                if isinstance(animation, StarRevealAnimation)
+            ),
+            None,
+        )
+        positions = [(panel.centerx - 15 + index * 38, panel.top + 187) for index in range(3)]
+        for position in positions:
+            self.screen.blit(self.star_empty, position)
+        for index in range(self.game.level_summary.stars):
+            progress = 1.0 if reveal is None else reveal.star_progress(index)
+            if progress == 0.0:
+                continue
+            scale = 1.0 if reveal is None else reveal.star_scale(index)
+            star = pygame.transform.rotozoom(self.star_full, 0, scale)
+            center = (positions[index][0] + 17, positions[index][1] + 17)
+            if scale > 1.0:
+                glow = pygame.Surface((54, 54), pygame.SRCALPHA)
+                pygame.draw.circle(glow, (255, 218, 91, round(92 * progress)), glow.get_rect().center, 20)
+                self.screen.blit(glow, glow.get_rect(center=center))
+            self.screen.blit(star, star.get_rect(center=center))
+
     def _draw_pause_panel(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((8, 15, 26, 156))
@@ -687,9 +773,19 @@ class UI:
         self.screen.blit(self.pause_panel, panel_rect.topleft)
         title = self.title_font.render("PAUSED", True, (250, 230, 133))
         self.screen.blit(title, title.get_rect(center=(panel_rect.centerx, panel_rect.top + 105)))
-        self._draw_action_button(self.pause_resume_rect(), "CONTINUE")
-        self._draw_action_button(self.pause_restart_rect(), "RESTART LEVEL")
-        self._draw_action_button(self.pause_menu_rect(), "MAIN MENU")
+        self._draw_text_button(self.pause_resume_rect(), "CONTINUE")
+        self._draw_text_button(self.pause_restart_rect(), "RESTART LEVEL")
+        self._draw_text_button(self.pause_menu_rect(), "MAIN MENU")
+
+    def _draw_text_button(self, rect: pygame.Rect, label: str) -> None:
+        """Draw pause-menu text; the supplied rect remains the invisible hit area."""
+        mouse_position = pygame.mouse.get_pos() if pygame.display.get_init() else (-1, -1)
+        color = (250, 230, 133) if rect.collidepoint(mouse_position) else (240, 245, 250)
+        shadow = self.pause_button_font.render(label, True, (10, 18, 28))
+        shadow_rect = shadow.get_rect(center=(rect.centerx + 2, rect.centery + 2))
+        self.screen.blit(shadow, shadow_rect)
+        surface = self.pause_button_font.render(label, True, color)
+        self.screen.blit(surface, surface.get_rect(center=rect.center))
 
     def _draw_action_button(
         self,

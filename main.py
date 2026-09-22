@@ -2,7 +2,12 @@
 import pygame
 
 from src.game import Game, GameState
-from src.levels import LEVEL_FACTORIES, LEVEL_NAMES, LEVEL_STAR_THRESHOLDS
+from src.levels import (
+    LEVEL_FACTORIES,
+    LEVEL_NAMES,
+    LEVEL_STAR_THRESHOLDS,
+    LEVEL_TIME_LIMITS,
+)
 from src.ui import UI, WINDOW_SIZE
 
 
@@ -57,6 +62,7 @@ def main() -> None:
             start_in_menu=True,
             level_names=LEVEL_NAMES,
             star_thresholds=LEVEL_STAR_THRESHOLDS,
+            time_limits=LEVEL_TIME_LIMITS,
         )
         ui = UI(screen, game)
         clock = pygame.time.Clock()

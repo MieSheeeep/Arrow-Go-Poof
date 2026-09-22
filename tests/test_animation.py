@@ -2,7 +2,12 @@ import math
 
 import pytest
 
-from src.animation import CollisionAnimation, FlyOutAnimation
+from src.animation import (
+    CollisionAnimation,
+    FlyOutAnimation,
+    HeartLossAnimation,
+    StarRevealAnimation,
+)
 
 
 def test_fly_out_animation_moves_right_and_finishes():
@@ -19,6 +24,47 @@ def test_fly_out_animation_moves_right_and_finishes():
     animation.update(0.25)
     assert animation.is_finished is True
     assert animation.offset_cells == pytest.approx((0.0, 2.0))
+
+
+def test_fly_out_animation_has_a_short_backwards_windup_before_flying():
+    animation = FlyOutAnimation(2, 3, "R", distance=2.0)
+
+    animation.update(0.04)
+    assert animation.phase == "windup"
+    assert animation.offset_cells[1] < 0.0
+    assert animation.scale > 1.0
+
+    animation.update(0.06)
+    assert animation.phase == "flying"
+    assert animation.offset_cells[1] > 0.0
+    assert animation.trail_length_cells > 0.0
+
+
+def test_heart_loss_animation_flashes_then_fades_for_the_removed_slot():
+    animation = HeartLossAnimation(2)
+
+    animation.update(0.05)
+    assert animation.phase == "flash"
+    assert animation.scale > 1.0
+    assert animation.alpha == 255
+
+    animation.update(0.10)
+    assert animation.phase == "fade"
+    assert animation.alpha < 255
+    assert animation.heart_index == 2
+
+
+def test_star_reveal_animation_pops_earned_stars_one_after_another():
+    animation = StarRevealAnimation(2)
+
+    animation.update(0.20)
+    assert animation.star_progress(0) > 0.0
+    assert animation.star_scale(0) > 1.0
+    assert animation.star_progress(1) == 0.0
+
+    animation.update(0.20)
+    assert animation.star_progress(1) > 0.0
+    assert animation.star_progress(2) == 0.0
 
 
 @pytest.mark.parametrize(

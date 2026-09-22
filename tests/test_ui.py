@@ -447,3 +447,43 @@ def test_pause_panel_uses_text_buttons_without_button_skins(monkeypatch):
         (ui.pause_restart_rect(), "RESTART LEVEL"),
         (ui.pause_menu_rect(), "MAIN MENU"),
     ]
+
+
+def test_feature_buttons_have_distinct_hit_areas():
+    pygame.font.init()
+    ui = UI(pygame.Surface(WINDOW_SIZE), Game(create_tree_board))
+    rects = [
+        ui.hint_rect(),
+        ui.undo_rect(),
+        ui.auto_rect(),
+        ui.save_rect(),
+        ui.load_rect(),
+    ]
+
+    assert all(rect.width > 0 and rect.height > 0 for rect in rects)
+    for index, left in enumerate(rects):
+        for right in rects[index + 1 :]:
+            assert not left.colliderect(right)
+    assert not ui.pause_rect().colliderect(ui.hint_rect())
+
+
+def test_feature_bar_renders_buttons_and_readouts(monkeypatch):
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    game = Game(lambda: Board([["R"]], [["leaf"]]))
+    ui = UI(screen, game)
+    calls = []
+    monkeypatch.setattr(ui, "_draw_text_button", lambda rect, label: calls.append(label))
+
+    ui._draw_feature_bar()
+
+    assert calls == ["HINT", "UNDO", "AUTO", "SAVE", "LOAD"]
+
+
+def test_hint_highlight_is_skipped_without_hint_cell():
+    pygame.font.init()
+    screen = pygame.Surface(WINDOW_SIZE)
+    ui = UI(screen, Game(create_tree_board))
+    ui.hint_cell = None
+
+    ui._draw_hint_highlight()

@@ -108,6 +108,14 @@ class Board:
     def can_fly(self, row: int, col: int) -> bool:
         return self.is_arrow(row, col) and self._find_blocker(row, col) is None
 
+    def first_clearable_arrow(self) -> tuple[int, int] | None:
+        """Return the first arrow with an open ray, in row-major order."""
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.can_fly(row, col):
+                    return row, col
+        return None
+
     def click(self, row: int, col: int) -> MoveResult:
         if not self.in_bounds(row, col):
             return MoveResult(False, row, col, None, "out_of_bounds")

@@ -43,6 +43,21 @@ class StubUI:
     def pause_menu_rect(self):
         return pygame.Rect(880, 0, 100, 40)
 
+    def hint_rect(self):
+        return pygame.Rect(0, 200, 100, 40)
+
+    def undo_rect(self):
+        return pygame.Rect(110, 200, 100, 40)
+
+    def auto_rect(self):
+        return pygame.Rect(220, 200, 100, 40)
+
+    def save_rect(self):
+        return pygame.Rect(330, 200, 100, 40)
+
+    def load_rect(self):
+        return pygame.Rect(440, 200, 100, 40)
+
     def start_rect(self):
         return self.restart_rect()
 
@@ -152,3 +167,77 @@ def test_clear_retry_button_restarts_current_level():
     assert process_event(event, game, ui) is True
     assert game.state is GameState.PLAYING
     assert game.board.get_cell(0, 0) == "R"
+
+
+def test_hint_button_sets_hint_cell(monkeypatch):
+    game, ui = make_game(), StubUI()
+    monkeypatch.setattr(game, "hint", lambda: (0, 0))
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (10, 210)})
+
+    assert process_event(event, game, ui) is True
+    assert ui.hint_cell == (0, 0)
+
+
+def test_undo_button_calls_undo(monkeypatch):
+    game, ui = make_game(), StubUI()
+    calls = []
+    monkeypatch.setattr(game, "undo", lambda: calls.append(True) or True)
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (120, 210)})
+
+    assert process_event(event, game, ui) is True
+    assert calls == [True]
+
+
+def test_auto_button_toggles_auto_mode():
+    game, ui = make_game(), StubUI()
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (230, 210)})
+
+    assert process_event(event, game, ui) is True
+    assert game.auto_mode is True
+    assert process_event(event, game, ui) is True
+    assert game.auto_mode is False
+
+
+def test_save_button_writes_savegame(monkeypatch):
+    game, ui = make_game(), StubUI()
+    saved = []
+    monkeypatch.setattr(game, "save", lambda path: saved.append(path))
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (340, 210)})
+
+    assert process_event(event, game, ui) is True
+    assert saved == ["savegame.json"]
+
+
+def test_load_button_reads_savegame(monkeypatch):
+    game, ui = make_game(), StubUI()
+    loaded = []
+    monkeypatch.setattr(game, "load", lambda path: loaded.append(path))
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (450, 210)})
+
+    assert process_event(event, game, ui) is True
+    assert loaded == ["savegame.json"]
+
+
+def test_load_button_swallows_missing_savegame(monkeypatch):
+    game, ui = make_game(), StubUI()
+
+    def boom(path):
+        raise FileNotFoundError(path)
+
+    monkeypatch.setattr(game, "load", boom)
+    event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": (450, 210)})
+
+    assert process_event(event, game, ui) is True
+
+
+def test_r_key_loads_a_random_level(monkeypatch):
+    game, ui = make_game(), StubUI()
+    monkeypatch.setattr(
+        "main.create_random_level_board",
+        lambda: Board([["R"]], [["leaf"]]),
+    )
+    event = pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_r})
+
+    assert process_event(event, game, ui) is True
+    assert game.custom_level is True
+    assert game.state is GameState.PLAYING

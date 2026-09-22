@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import sys
 from pathlib import Path
 
 import pygame
@@ -31,9 +32,15 @@ HOVERED_ARROW_CARD_ALPHA = 105
 ERROR_TILE = (238, 112, 112)
 ERROR_ARROW = (128, 38, 38)
 HOVER_COLOR = (102, 213, 255)
-MENU_BACKGROUND_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu-background.png"
-COVER_PATH = Path(__file__).resolve().parent.parent / "assets" / "cover.png"
-UI_ASSET_DIR = Path(__file__).resolve().parent.parent / "assets" / "ui"
+# 开发时相对本文件定位项目根目录；打包成可执行文件后，资源被解压到
+# PyInstaller 的临时目录（sys._MEIPASS），因此优先从那里读取资源。
+_ROOT = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    _ROOT = Path(sys._MEIPASS)
+
+MENU_BACKGROUND_PATH = _ROOT / "assets" / "menu-background.png"
+COVER_PATH = _ROOT / "assets" / "cover.png"
+UI_ASSET_DIR = _ROOT / "assets" / "ui"
 BUTTON_STATES_PATH = UI_ASSET_DIR / "button-states.png"
 HEARTS_PATH = UI_ASSET_DIR / "hearts.png"
 PAUSE_BUTTON_PATH = UI_ASSET_DIR / "pause-button.png"
@@ -54,6 +61,50 @@ MENU_PANEL_COLOR = (75, 48, 31)
 # inside it so the board feels like a bead-art project on the work surface.
 WORK_MAT_RECT = pygame.Rect(180, 160, 840, 580)
 REVEAL_GLOW_DURATION = 0.22
+
+# UI 装饰调色板与动画参数（统一的金色高亮 + 深蓝面板渐变）。
+GOLD = (250, 220, 120)
+GOLD_BRIGHT = (255, 238, 164)
+GOLD_DEEP = (200, 162, 66)
+INK = (27, 43, 61)
+PANEL_GRADIENT_TOP = (62, 98, 148)
+PANEL_GRADIENT_BOTTOM = (30, 56, 92)
+ACCENT_RED = (241, 94, 100)
+COMBO_POP_DURATION = 0.42
+SCORE_POP_DURATION = 0.7
+LIFE_FLASH_DURATION = 0.45
+RESULT_ENTRANCE_DURATION = 0.30
+
+
+def _clamp(value: float, low: float, high: float) -> float:
+    return low if value < low else high if value > high else value
+
+
+def _ease_out_cubic(t: float) -> float:
+    """先快后慢的缓动，用于面板淡入与进度条平滑。"""
+    t = _clamp(t, 0.0, 1.0)
+    return 1.0 - (1.0 - t) ** 3
+
+
+def _ease_out_back(t: float) -> float:
+    """带轻微回弹的缓动，用于标题与连击数字的「弹跳」出现。"""
+    t = _clamp(t, 0.0, 1.0)
+    c1 = 1.70158
+    c3 = c1 + 1.0
+    return 1.0 + c3 * (t - 1.0) ** 3 + c1 * (t - 1.0) ** 2
+
+
+def _mix_color(
+    first: tuple[int, int, int],
+    second: tuple[int, int, int],
+    t: float,
+) -> tuple[int, int, int]:
+    """在两个颜色之间做线性插值，用于渐变填充。"""
+    t = _clamp(t, 0.0, 1.0)
+    return tuple(
+        round(first[channel] + (second[channel] - first[channel]) * t)
+        for channel in range(3)
+    )
 
 
 def format_elapsed_time(seconds: float) -> str:
@@ -157,6 +208,34 @@ def fit_surface(
     )
     fitted = pygame.transform.scale(surface, size)
     return fitted, fitted.get_rect(center=target.center)
+
+
+def draw_gradient_rect(
+    surface: pygame.Surface,
+    rect: pygame.Rect,
+    top_color: tuple[int, int, int],
+    bottom_color: tuple[int, int, int],
+    *,
+    border_radius: int = 0,
+) -> None:
+    """逐行绘制垂直渐变圆角矩形，替代单调的纯色面板。"""
+    if rect.width <= 0 or rect.height <= 0:
+        return
+    layer = pygame.Surface(rect.size, pygame.SRCALPHA)
+    rows = max(1, rect.height)
+    for offset in range(rows):
+        ratio = offset / (rows - 1) if rows > 1 else 0.0
+        color = _mix_color(top_color, bottom_color, ratio)
+        pygame.draw.line(
+            layer, (*color, 255), (0, offset), (rect.width - 1, offset)
+        )
+    if border_radius > 0:
+        mask = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(
+            mask, (255, 255, 255, 255), mask.get_rect(), border_radius=border_radius
+        )
+        layer.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    surface.blit(layer, rect.topleft)
 
 
 COLOR_MAP = {
@@ -316,7 +395,45 @@ class UI:
         self.pause_panel = pygame.transform.scale(
             _load_ui_asset(PAUSE_PANEL_PATH, black_is_transparent=True), (600, 554)
         )
+        self.hint_cell: tuple[int, int] | None = None
+        # 界面层的「响应式」装饰状态：在每一帧对比上一帧的数值，
+        # 检测到变化时触发一次性特效（连击弹跳、掉血红光、通关入场）。
+        self._last_combo = 0
+        self._last_score = 0
+        self._last_lives = self.game.lives
+        self._last_state = self.game.state
+        self._combo_pop_at = -1.0
+        self._combo_pop_value = 0
+        self._score_gained = 0
+        self._life_flash_at = -1.0
+        self._result_at = -1.0
+        self._countdown_ratio = 1.0
+        self._last_frame_at = -1.0
+        self._frame_delta = 0.0
         self._refresh_layout()
+
+    @staticmethod
+    def _now() -> float:
+        """返回以秒为单位的墙钟时间，驱动界面层的轻量动画。"""
+        return pygame.time.get_ticks() / 1000.0
+
+    def _detect_transitions(self, now: float) -> None:
+        """对比上一帧，把数值变化翻译成一次性视觉特效的触发点。"""
+        if self.game.combo > self._last_combo:
+            self._combo_pop_at = now
+            self._combo_pop_value = self.game.combo
+            self._score_gained = self.game.score - self._last_score
+        if self.game.lives < self._last_lives:
+            self._life_flash_at = now
+        if self.game.state in {GameState.CLEARED, GameState.FAILED} and self._last_state not in {
+            GameState.CLEARED,
+            GameState.FAILED,
+        }:
+            self._result_at = now
+        self._last_combo = self.game.combo
+        self._last_score = self.game.score
+        self._last_lives = self.game.lives
+        self._last_state = self.game.state
 
     def cell_at(self, position: tuple[int, int]) -> tuple[int, int] | None:
         self._refresh_layout()
@@ -369,22 +486,56 @@ class UI:
         """Backward-compatible name for the primary result action."""
         return self.result_primary_rect()
 
+    def hint_rect(self) -> pygame.Rect:
+        return pygame.Rect(280, 745, 120, 40)
+
+    def undo_rect(self) -> pygame.Rect:
+        return pygame.Rect(410, 745, 120, 40)
+
+    def auto_rect(self) -> pygame.Rect:
+        return pygame.Rect(540, 745, 120, 40)
+
+    def save_rect(self) -> pygame.Rect:
+        return pygame.Rect(670, 745, 120, 40)
+
+    def load_rect(self) -> pygame.Rect:
+        return pygame.Rect(800, 745, 120, 40)
+
     def draw(self) -> None:
+        now = self._now()
+        if self._last_frame_at < 0:
+            self._frame_delta = 0.0
+        else:
+            self._frame_delta = min(now - self._last_frame_at, 0.1)
+        self._last_frame_at = now
+        self._detect_transitions(now)
         if self.game.state is GameState.START:
             self._draw_menu_background()
             return
         self._draw_background()
         self._draw_board()
         self._draw_animations()
+        self._draw_hint_highlight()
         self._draw_hud()
+        self._draw_feature_bar()
         if self.game.state in {GameState.CLEARED, GameState.FAILED}:
             self._draw_result_panel()
         elif self.game.state is GameState.PAUSED:
             self._draw_pause_panel()
 
     def _draw_menu_background(self) -> None:
-        """Draw the complete cover, including its baked-in start button."""
+        """Draw the complete cover, plus a pulsing accent over its start button."""
         self.screen.blit(self.cover_background, (0, 0))
+        pulse = 0.5 + 0.5 * math.sin(self._now() * 2.4)
+        outline = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        pygame.draw.rect(
+            outline,
+            (255, 238, 164, round(40 + 58 * pulse)),
+            self.start_rect().inflate(8, 8),
+            width=3,
+            border_radius=18,
+        )
+        self.screen.blit(outline, (0, 0))
 
     def _draw_background(self) -> None:
         """Draw the empty work desk behind the puzzle and overlays."""
@@ -638,42 +789,109 @@ class UI:
 
     def _draw_hud(self) -> None:
         self.screen.blit(self.top_status_bar, (0, 0))
-        level_text = self.small_font.render(
-            f"LEVEL {self.game.level_number:02d}/{self.game.level_count}",
-            True,
-            (250, 230, 133),
-        )
-        time_text = self.small_font.render(
+        now = self._now()
+        if self.game.custom_level:
+            level_label = "LEVEL RANDOM"
+        else:
+            level_label = f"LEVEL {self.game.level_number:02d}/{self.game.level_count}"
+        self._draw_hud_text(level_label, (72, 46), GOLD)
+        self._draw_hud_text(
             f"TIME {format_countdown_time(self.game.remaining_seconds)}",
-            True,
+            (470, 46),
             (240, 245, 250),
         )
-        self.screen.blit(level_text, (72, 46))
-        self.screen.blit(time_text, (470, 46))
         self._draw_countdown_bar()
         for index in range(3):
-            heart = self.heart_full if index < self.game.lives else self.heart_empty
-            self.screen.blit(heart, (800 + index * 83, 37))
+            self._draw_heart(index, now)
         for animation in self.game.animations:
             if isinstance(animation, HeartLossAnimation):
                 self._draw_heart_loss(animation)
+        self._draw_life_flash(now)
         self.screen.blit(self.pause_icon, self.pause_rect().topleft)
 
+    def _draw_hud_text(
+        self,
+        text: str,
+        position: tuple[int, int],
+        color: tuple[int, int, int],
+    ) -> None:
+        """绘制带阴影的 HUD 文本，让文字从顶栏背景上更清晰地浮出。"""
+        shadow = self.small_font.render(text, True, (12, 24, 38))
+        self.screen.blit(shadow, (position[0] + 1, position[1] + 2))
+        self.screen.blit(self.small_font.render(text, True, color), position)
+
+    def _draw_heart(self, index: int, now: float) -> None:
+        """绘制一颗生命；满血的心会随墙钟轻柔地「跳动」。"""
+        center = (817 + index * 83, 52)
+        if index < self.game.lives:
+            pulse = 1.0 + 0.05 * math.sin(now * 3.2 + index * 0.9)
+            heart = pygame.transform.rotozoom(self.heart_full, 0, pulse)
+        else:
+            heart = self.heart_empty
+        self.screen.blit(heart, heart.get_rect(center=center))
+
+    def _draw_life_flash(self, now: float) -> None:
+        """掉血瞬间在整屏叠加一层快速淡出的红光。"""
+        elapsed = now - self._life_flash_at
+        if not 0.0 <= elapsed <= LIFE_FLASH_DURATION:
+            return
+        alpha = round(92 * (1.0 - elapsed / LIFE_FLASH_DURATION))
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((216, 58, 58, alpha))
+        self.screen.blit(overlay, (0, 0))
+
     def _draw_countdown_bar(self) -> None:
-        """Render remaining time as a calm-to-urgent progress strip."""
-        rect = pygame.Rect(470, 77, 180, 7)
-        pygame.draw.rect(self.screen, (27, 43, 61), rect, border_radius=4)
-        progress = self.game.remaining_seconds / self.game.time_limit_seconds
-        fill = rect.copy()
-        fill.width = round(rect.width * progress)
-        if fill.width:
-            color = countdown_color(self.game.remaining_seconds)
-            pygame.draw.rect(self.screen, color, fill, border_radius=4)
-            if self.game.remaining_seconds <= 10.0:
-                glow = pygame.Surface(rect.inflate(10, 10).size, pygame.SRCALPHA)
-                pulse = round(36 + 28 * abs(math.sin(self.game.elapsed_seconds * 8)))
-                pygame.draw.rect(glow, (*color, pulse), glow.get_rect(), border_radius=8)
-                self.screen.blit(glow, glow.get_rect(center=rect.center))
+        """把剩余时间画成平滑渐变的进度条，时间越紧迫颜色与光晕越醒目。"""
+        rect = pygame.Rect(455, 76, 230, 14)
+        actual = _clamp(
+            self.game.remaining_seconds / self.game.time_limit_seconds, 0.0, 1.0
+        )
+        # 显示比例逐帧向真实值逼近，避免进度条「一步跳」。
+        if self._frame_delta > 0:
+            self._countdown_ratio += (actual - self._countdown_ratio) * min(
+                1.0, self._frame_delta * 14.0
+            )
+        else:
+            self._countdown_ratio = actual
+        ratio = _clamp(self._countdown_ratio, 0.0, 1.0)
+
+        pygame.draw.rect(self.screen, (14, 29, 45), rect, border_radius=7)
+        pygame.draw.rect(self.screen, (27, 43, 61), rect.inflate(-2, -2), border_radius=6)
+
+        color = countdown_color(self.game.remaining_seconds)
+        inner = rect.inflate(-4, -4)
+        if ratio > 0:
+            fill = inner.copy()
+            fill.width = max(1, round(inner.width * ratio))
+            gradient = pygame.Surface(fill.size, pygame.SRCALPHA)
+            for offset in range(fill.width):
+                shade = _mix_color(
+                    color,
+                    tuple(max(0, channel - 64) for channel in color),
+                    offset / max(1, fill.width - 1),
+                )
+                pygame.draw.line(
+                    gradient, (*shade, 255), (offset, 0), (offset, fill.height)
+                )
+            mask = pygame.Surface(fill.size, pygame.SRCALPHA)
+            pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(), border_radius=5)
+            gradient.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            self.screen.blit(gradient, fill.topleft)
+            # 顶部一条高光，模拟玻璃质感。
+            shine = pygame.Surface(fill.size, pygame.SRCALPHA)
+            pygame.draw.rect(
+                shine,
+                (255, 255, 255, 48),
+                (0, 0, fill.width, max(2, fill.height // 2)),
+                border_radius=4,
+            )
+            self.screen.blit(shine, fill.topleft)
+
+        if self.game.remaining_seconds <= 10.0:
+            glow = pygame.Surface(rect.inflate(16, 16).size, pygame.SRCALPHA)
+            pulse = round(42 + 34 * abs(math.sin(self._now() * 9)))
+            pygame.draw.rect(glow, (*color, pulse), glow.get_rect(), border_radius=11)
+            self.screen.blit(glow, glow.get_rect(center=rect.center))
 
     def _draw_heart_loss(self, animation: HeartLossAnimation) -> None:
         """Overlay the just-lost full heart while it flashes and fades away."""
@@ -689,38 +907,56 @@ class UI:
         )
         self.screen.blit(heart, heart_rect)
 
+    def _result_entrance(self, now: float) -> float:
+        """结算面板的淡入进度（0→1）；从未触发时直接视为已完全显示。"""
+        if self._result_at < 0 or now - self._result_at >= RESULT_ENTRANCE_DURATION:
+            return 1.0
+        return _ease_out_cubic(max(0.0, now - self._result_at) / RESULT_ENTRANCE_DURATION)
+
     def _draw_result_panel(self) -> None:
+        entrance = self._result_entrance(self._now())
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        overlay.fill((12, 28, 54, 120))
+        overlay.fill((12, 28, 54, round(120 * entrance)))
         self.screen.blit(overlay, (0, 0))
 
-        panel = pygame.Rect(0, 0, 500, 540)
+        panel = pygame.Rect(0, 0, 540, 560)
         panel.center = self.screen.get_rect().center
-        pygame.draw.rect(self.screen, HUD_COLOR, panel, border_radius=16)
+        shadow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        pygame.draw.rect(
+            shadow, (0, 0, 0, round(90 * entrance)), panel.move(6, 12), border_radius=20
+        )
+        self.screen.blit(shadow, (0, 0))
+        draw_gradient_rect(
+            self.screen, panel, PANEL_GRADIENT_TOP, PANEL_GRADIENT_BOTTOM, border_radius=20
+        )
+        pygame.draw.rect(self.screen, GOLD_DEEP, panel, width=2, border_radius=20)
+        pygame.draw.rect(
+            self.screen, (255, 255, 255), panel.inflate(-8, -8), width=1, border_radius=16
+        )
+
         if self.game.state is GameState.FAILED:
             title = "TIME UP" if self.game.failure_reason == "time_up" else "TRY AGAIN"
         elif self.game.has_next_level:
             title = "LEVEL CLEAR"
         else:
             title = "ALL CLEAR"
-        title_surface = self.title_font.render(title, True, (250, 230, 133))
-        self.screen.blit(
-            title_surface,
-            title_surface.get_rect(center=(panel.centerx, panel.top + 78)),
-        )
+        self._draw_result_title(title, panel, entrance)
 
-        time_text = self.small_font.render(
-            f"Time: {format_elapsed_time(self.game.elapsed_seconds)}",
-            True,
-            (240, 245, 250),
+        divider = pygame.Surface((panel.width - 120, 1), pygame.SRCALPHA)
+        divider.fill((*GOLD_DEEP, 120))
+        self.screen.blit(divider, (panel.left + 60, panel.top + 112))
+        stats = (
+            ("TIME", format_elapsed_time(self.game.elapsed_seconds)),
+            ("MISTAKES", str(self.game.mistakes)),
+            ("BEST COMBO", f"x{self.game.max_combo}"),
+            ("SCORE", str(self.game.score)),
         )
-        self.screen.blit(time_text, time_text.get_rect(center=(panel.centerx, panel.top + 152)))
+        for index, (label, value) in enumerate(stats):
+            column = panel.centerx - 130 if index % 2 == 0 else panel.centerx + 130
+            row = panel.top + 134 if index < 2 else panel.top + 196
+            self._draw_stat(label, value, column, row)
+
         if self.game.state is GameState.CLEARED and self.game.level_summary is not None:
-            stars_label = self.font.render("Stars:", True, (250, 230, 133))
-            self.screen.blit(
-                stars_label,
-                stars_label.get_rect(center=(panel.centerx - 62, panel.top + 204)),
-            )
             self._draw_result_stars(panel)
 
         if self.game.state is GameState.FAILED:
@@ -738,9 +974,37 @@ class UI:
             self._draw_action_button(self.result_retry_rect(), "RETRY LEVEL")
         self._draw_action_button(self.result_menu_rect(), "MAIN MENU")
 
+    def _draw_result_title(self, title: str, panel: pygame.Rect, entrance: float) -> None:
+        """标题在入场时轻微放大回弹，并带描边与阴影。"""
+        base = self.title_font.render(title, True, GOLD_BRIGHT)
+        if entrance < 1.0:
+            scale = max(0.05, _ease_out_back(entrance))
+            surface = pygame.transform.rotozoom(base, 0, scale)
+        else:
+            surface = base
+        shadow = self.title_font.render(title, True, (10, 18, 28))
+        center = (panel.centerx, panel.top + 60)
+        self.screen.blit(shadow, shadow.get_rect(center=(center[0] + 3, center[1] + 4)))
+        self.screen.blit(surface, surface.get_rect(center=center))
+
+    def _draw_stat(
+        self,
+        label: str,
+        value: str,
+        center_x: int,
+        top: int,
+    ) -> None:
+        """在结算面板上绘制一组「标签 + 数值」的统计单元格。"""
+        label_surface = self.small_font.render(label, True, (150, 180, 210))
+        value_surface = self.font.render(value, True, (240, 245, 250))
+        self.screen.blit(label_surface, label_surface.get_rect(midtop=(center_x, top)))
+        self.screen.blit(value_surface, value_surface.get_rect(midtop=(center_x, top + 22)))
+
     def _draw_result_stars(self, panel: pygame.Rect) -> None:
         """Show empty stars first, then pop earned stars in a short sequence."""
         assert self.game.level_summary is not None
+        label = self.small_font.render("STARS", True, (150, 180, 210))
+        self.screen.blit(label, label.get_rect(midtop=(panel.centerx, panel.top + 252)))
         reveal = next(
             (
                 animation
@@ -749,7 +1013,9 @@ class UI:
             ),
             None,
         )
-        positions = [(panel.centerx - 15 + index * 38, panel.top + 187) for index in range(3)]
+        positions = [
+            (panel.centerx - 38 + index * 38, panel.top + 280) for index in range(3)
+        ]
         for position in positions:
             self.screen.blit(self.star_empty, position)
         for index in range(self.game.level_summary.stars):
@@ -760,10 +1026,93 @@ class UI:
             star = pygame.transform.rotozoom(self.star_full, 0, scale)
             center = (positions[index][0] + 17, positions[index][1] + 17)
             if scale > 1.0:
-                glow = pygame.Surface((54, 54), pygame.SRCALPHA)
-                pygame.draw.circle(glow, (255, 218, 91, round(92 * progress)), glow.get_rect().center, 20)
+                glow = pygame.Surface((64, 64), pygame.SRCALPHA)
+                pygame.draw.circle(
+                    glow,
+                    (255, 218, 91, round(104 * progress)),
+                    glow.get_rect().center,
+                    24,
+                )
                 self.screen.blit(glow, glow.get_rect(center=center))
             self.screen.blit(star, star.get_rect(center=center))
+
+    def _draw_hint_highlight(self) -> None:
+        """Outline the currently hinted arrow with a pulsing double border."""
+        if self.hint_cell is None or self.game.state is not GameState.PLAYING:
+            return
+        row, col = self.hint_cell
+        if self.game.board.get_cell(row, col) not in {"U", "D", "L", "R"}:
+            return
+        rect = self.layout.cell_rect(row, col).inflate(6, 6)
+        pulse = 0.5 + 0.5 * math.sin(self._now() * 6.0)
+        fill = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(
+            fill,
+            (102, 213, 255, round(24 + 32 * pulse)),
+            fill.get_rect(),
+            border_radius=10,
+        )
+        self.screen.blit(fill, rect.topleft)
+        pygame.draw.rect(self.screen, HOVER_COLOR, rect, width=4, border_radius=10)
+        pygame.draw.rect(
+            self.screen,
+            (102, 213, 255),
+            rect.inflate(8, 8),
+            width=2,
+            border_radius=14,
+        )
+
+    def _draw_feature_bar(self) -> None:
+        """Draw the in-game action buttons plus score and combo readouts."""
+        if self.game.state is not GameState.PLAYING:
+            return
+        strip = pygame.Surface((WINDOW_SIZE[0], 62), pygame.SRCALPHA)
+        strip.fill((12, 24, 38, 120))
+        pygame.draw.line(strip, (255, 255, 255, 28), (0, 0), (WINDOW_SIZE[0], 0))
+        self.screen.blit(strip, (0, 738))
+        for rect, label in (
+            (self.hint_rect(), "HINT"),
+            (self.undo_rect(), "UNDO"),
+            (self.auto_rect(), "AUTO"),
+            (self.save_rect(), "SAVE"),
+            (self.load_rect(), "LOAD"),
+        ):
+            self._draw_text_button(rect, label)
+        self._draw_score_readout()
+        self._draw_combo_readout(self._now())
+
+    def _draw_score_readout(self) -> None:
+        """在功能条左侧显示分数，配合得分弹出动画一起呈现。"""
+        label = self.small_font.render("SCORE", True, (150, 180, 210))
+        self.screen.blit(label, (40, 744))
+        value = self.font.render(f"{self.game.score:06d}", True, (240, 245, 250))
+        self.screen.blit(value, (40, 762))
+
+        elapsed = self._now() - self._combo_pop_at
+        if 0.0 <= elapsed <= SCORE_POP_DURATION:
+            progress = elapsed / SCORE_POP_DURATION
+            rise = round(progress * 28)
+            alpha = round(255 * (1.0 - progress))
+            pop = self.font.render(f"+{self._score_gained}", True, (114, 204, 132))
+            pop.set_alpha(alpha)
+            self.screen.blit(pop, pop.get_rect(center=(150, 732 - rise)))
+
+    def _draw_combo_readout(self, now: float) -> None:
+        """在功能条右侧显示连击数；连击增长时数字会「弹跳」并变色。"""
+        label = self.small_font.render("COMBO", True, (150, 180, 210))
+        self.screen.blit(label, label.get_rect(topright=(1184, 744)))
+        pop_elapsed = now - self._combo_pop_at
+        if 0.0 <= pop_elapsed <= COMBO_POP_DURATION:
+            progress = pop_elapsed / COMBO_POP_DURATION
+            scale = _ease_out_back(progress)
+            color = _mix_color(GOLD_BRIGHT, GOLD, progress)
+        else:
+            scale = 1.0
+            color = GOLD if self.game.combo > 0 else (150, 180, 210)
+        text = self.font.render(f"x{self.game.combo}", True, color)
+        if scale != 1.0:
+            text = pygame.transform.rotozoom(text, 0, scale)
+        self.screen.blit(text, text.get_rect(topright=(1184, 762)))
 
     def _draw_pause_panel(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
@@ -771,8 +1120,14 @@ class UI:
         self.screen.blit(overlay, (0, 0))
         panel_rect = pygame.Rect(300, 123, 600, 554)
         self.screen.blit(self.pause_panel, panel_rect.topleft)
-        title = self.title_font.render("PAUSED", True, (250, 230, 133))
-        self.screen.blit(title, title.get_rect(center=(panel_rect.centerx, panel_rect.top + 105)))
+        title_center = (panel_rect.centerx, panel_rect.top + 105)
+        title_shadow = self.title_font.render("PAUSED", True, (10, 18, 28))
+        self.screen.blit(
+            title_shadow,
+            title_shadow.get_rect(center=(title_center[0] + 3, title_center[1] + 4)),
+        )
+        title = self.title_font.render("PAUSED", True, GOLD_BRIGHT)
+        self.screen.blit(title, title.get_rect(center=title_center))
         self._draw_text_button(self.pause_resume_rect(), "CONTINUE")
         self._draw_text_button(self.pause_restart_rect(), "RESTART LEVEL")
         self._draw_text_button(self.pause_menu_rect(), "MAIN MENU")

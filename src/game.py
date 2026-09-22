@@ -106,6 +106,7 @@ class Game:
         self.max_lives = max_lives
         self.level_index = 0
         self._start_in_menu = start_in_menu
+        self.auto_mode = False
         self.restart()
         if start_in_menu:
             self.state = GameState.START
@@ -145,6 +146,11 @@ class Game:
         self.animations: list[Animation] = []
         self.error_cells: set[tuple[int, int]] = set()
         self.failure_reason: str | None = None
+        self.combo = 0
+        self.score = 0
+        self.max_combo = 0
+        self.history: list[tuple[int, int, str]] = []
+        self.custom_level = False
 
     def restart(self) -> None:
         self._load_level()
@@ -154,6 +160,13 @@ class Game:
     def start(self) -> None:
         if self.state is GameState.START:
             self.state = GameState.CLEARED if self.board.is_cleared() else GameState.PLAYING
+
+    def load_custom_board(self, board: Board) -> None:
+        """Swap in a caller-provided board and start a fresh attempt."""
+        self.board = board
+        self._reset_runtime()
+        self.custom_level = True
+        self.state = GameState.CLEARED if self.board.is_cleared() else GameState.PLAYING
 
     def next_level(self) -> bool:
         if self.state is not GameState.CLEARED or not self.has_next_level:
@@ -189,6 +202,84 @@ class Game:
         self.state = GameState.PLAYING
         return True
 
+    def hint(self) -> tuple[int, int] | None:
+        """Return a currently clickable arrow for the player, or None."""
+        if self.state is not GameState.PLAYING:
+            return None
+        return self.board.first_clearable_arrow()
+
+    def undo(self) -> bool:
+        """Restore the most recent successful clear, if possible."""
+        if self.state not in {GameState.PLAYING, GameState.CLEARED}:
+            return False
+        if self.animations or not self.history:
+            return False
+        row, col, direction = self.history.pop()
+        if self.board.get_cell(row, col) != ".":
+            return False
+        self.board.arrow_grid[row][col] = direction
+        self.score = max(0, self.score - 10 * self.combo)
+        self.combo = max(0, self.combo - 1)
+        self.error_cells.discard((row, col))
+        if self.state is GameState.CLEARED:
+            self.level_summary = None
+            self.state = GameState.PLAYING
+        return True
+
+    def auto_solve_step(self) -> bool:
+        """Click one currently clearable arrow; return whether a move happened."""
+        if self.state is not GameState.PLAYING:
+            return False
+        cell = self.board.first_clearable_arrow()
+        if cell is None:
+            return False
+        result = self.click(*cell)
+        return result is not None and result.success
+
+    def to_dict(self) -> dict:
+        """Serialize the current attempt for saving."""
+        return {
+            "level_index": self.level_index,
+            "arrow_grid": [list(row) for row in self.board.arrow_grid],
+            "color_grid": [list(row) for row in self.board.color_grid],
+            "lives": self.lives,
+            "mistakes": self.mistakes,
+            "elapsed_seconds": self.elapsed_seconds,
+            "combo": self.combo,
+            "score": self.score,
+        }
+
+    def load_state(self, data: dict) -> None:
+        """Restore an attempt previously produced by to_dict."""
+        self.level_index = int(data["level_index"])
+        self.board = Board(data["arrow_grid"], data["color_grid"])
+        self.lives = int(data["lives"])
+        self.mistakes = int(data["mistakes"])
+        self.elapsed_seconds = float(data["elapsed_seconds"])
+        self.combo = int(data.get("combo", 0))
+        self.score = int(data.get("score", 0))
+        self.max_combo = self.combo
+        self.level_summary = None
+        self.animations = []
+        self.error_cells = set()
+        self.history = []
+        self.failure_reason = None
+        self.state = GameState.PLAYING
+
+    def save(self, path) -> None:
+        """Write the current attempt to a JSON file."""
+        import json
+
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(self.to_dict(), handle, ensure_ascii=False)
+
+    def load(self, path) -> None:
+        """Restore an attempt from a JSON file."""
+        import json
+
+        with open(path, "r", encoding="utf-8") as handle:
+            self.load_state(json.load(handle))
+
     def click(self, row: int, col: int) -> MoveResult | None:
         if self.state is not GameState.PLAYING:
             return None
@@ -197,6 +288,10 @@ class Game:
         if result.reason == "clear":
             assert result.direction is not None
             self.animations.append(FlyOutAnimation(row, col, result.direction))
+            self.combo += 1
+            self.max_combo = max(self.max_combo, self.combo)
+            self.score += 10 * self.combo
+            self.history.append((row, col, result.direction))
             if self.board.is_cleared():
                 self.level_summary = LevelSummary(
                     self.elapsed_seconds,
@@ -214,6 +309,7 @@ class Game:
             assert result.blocker is not None
             self.lives -= 1
             self.mistakes += 1
+            self.combo = 0
             self.animations.append(
                 CollisionAnimation(row, col, result.blocker, result.direction)
             )
@@ -244,3 +340,5 @@ class Game:
             else:
                 remaining.append(animation)
         self.animations = remaining
+        if self.auto_mode and self.state is GameState.PLAYING and not self.animations:
+            self.auto_solve_step()

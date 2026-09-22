@@ -1,5 +1,6 @@
 """Built-in level definitions for development and tests."""
 from src.board import Board
+from src.level_generator import generate_solvable_layout
 
 SAMPLE_ARROW_GRID = (
     (None, None, "U", None, None),
@@ -481,3 +482,23 @@ LEVEL_FACTORIES = (
     create_tree_board,
     create_hello_kitty_board,
 )
+
+
+def create_random_level_board(seed: int | None = None) -> Board:
+    """Return a fresh, solvable board from one of the three picture masks."""
+    import random
+
+    rng = random.Random(seed)
+    masks = (ENCHANTED_APPLE_COLOR_GRID, TREE_COLOR_GRID, HELLO_KITTY_COLOR_GRID)
+    for _ in range(50):
+        mask = rng.choice(masks)
+        layout_seed = rng.randrange(1, 10_000_000)
+        try:
+            layout = generate_solvable_layout(mask, layout_seed)
+        except ValueError:
+            continue
+        return Board(
+            [list(row) for row in layout.arrow_grid],
+            [list(row) for row in mask],
+        )
+    raise RuntimeError("无法生成随机关卡")
